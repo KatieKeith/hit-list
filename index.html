@@ -1263,12 +1263,16 @@ function buildPips(){
     x += w;
   });
 }
+/* Rests have no mark of their own, so during one the bar would go blank.
+   The mark you are heading for stays lit instead. */
 function paintPips(){
-  P.pips.forEach(pip=>{
-    const from=Number(pip.dataset.from), to=Number(pip.dataset.to);
-    pip.classList.toggle("done",P.i>to);
-    pip.classList.toggle("now",P.i>=from&&P.i<=to);
+  let cur=-1;
+  P.pips.forEach((pip,k)=>{
+    const done=P.i>Number(pip.dataset.to);
+    pip.classList.toggle("done",done);
+    if(!done&&cur<0) cur=k;
   });
+  P.pips.forEach((pip,k)=>pip.classList.toggle("now",k===cur));
 }
 const ACCENT={warmup:"var(--warmup)",work:"var(--work)",hold:"var(--flex)",
               rest:"var(--rest)",break:"var(--rest)",cooldown:"var(--cooldown)"};
