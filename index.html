@@ -194,19 +194,21 @@ select.fld{appearance:none;-webkit-appearance:none}
 .play{--accent:var(--work);background:var(--ink);padding-bottom:12px;min-height:100dvh}
 .done{background:var(--ink);min-height:100dvh;justify-content:center}
 /* Positions are worked out in JS and set as percentages, so every mark is the
-   same size on every browser. Flex was leaving them to the layout engine and
-   they came out as dots of assorted sizes on iOS. */
+   same size on every browser.
+   The state classes are "filled" and "current", not "done" and "now": those two
+   names already belong to the finish screen and the exercise-name heading, and a
+   mark carrying them inherited min-height:100dvh and grew into a full-height bar. */
 .pips{position:relative;height:9px;margin:16px 18px 0;flex:none}
 .pip{
   position:absolute;top:1px;height:7px;border-radius:3px;background:var(--surface2);
   transition:background .2s,box-shadow .2s;
 }
-.pip.done{background:var(--line2)}
-.pip.done[data-t="warmup"]{background:var(--warmup)}
-.pip.done[data-t="work"],.pip.done[data-t="hold"]{background:var(--work)}
-.flexmode-on .pip.done[data-t="hold"]{background:var(--flex)}
-.pip.done[data-t="cooldown"]{background:var(--cooldown)}
-.pip.now{background:var(--text);box-shadow:0 0 0 3px rgba(234,240,247,.18)}
+.pip.filled{background:var(--line2)}
+.pip.filled[data-t="warmup"]{background:var(--warmup)}
+.pip.filled[data-t="work"],.pip.filled[data-t="hold"]{background:var(--work)}
+.flexmode-on .pip.filled[data-t="hold"]{background:var(--flex)}
+.pip.filled[data-t="cooldown"]{background:var(--cooldown)}
+.pip.current{background:var(--text);box-shadow:0 0 0 3px rgba(234,240,247,.18)}
 .phead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px 0}
 .chip{
   font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;
@@ -1269,10 +1271,10 @@ function paintPips(){
   let cur=-1;
   P.pips.forEach((pip,k)=>{
     const done=P.i>Number(pip.dataset.to);
-    pip.classList.toggle("done",done);
+    pip.classList.toggle("filled",done);
     if(!done&&cur<0) cur=k;
   });
-  P.pips.forEach((pip,k)=>pip.classList.toggle("now",k===cur));
+  P.pips.forEach((pip,k)=>pip.classList.toggle("current",k===cur));
 }
 const ACCENT={warmup:"var(--warmup)",work:"var(--work)",hold:"var(--flex)",
               rest:"var(--rest)",break:"var(--rest)",cooldown:"var(--cooldown)"};
