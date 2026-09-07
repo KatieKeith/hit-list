@@ -11,7 +11,8 @@
 <meta name="theme-color" content="#0C1016">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Hit List</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -235,6 +236,11 @@ select.fld{appearance:none;-webkit-appearance:none}
   font-size:clamp(32px,8.4vw,46px);line-height:1.06;margin:0;text-wrap:balance;
 }
 .cue{margin:9px 0 0;color:var(--cue);font-size:clamp(19px,4.8vw,23px);line-height:1.3;text-wrap:balance}
+.lookup{
+  display:inline-block;margin-top:12px;font-size:14px;color:var(--dim);
+  text-decoration:none;border-bottom:1px solid var(--line2);padding-bottom:2px;
+}
+.lookup:active{color:var(--muted)}
 .next{
   font-size:17px;color:var(--dim);text-align:center;
   border-top:1px solid var(--line);padding-top:13px;width:100%;max-width:420px;
@@ -483,6 +489,7 @@ select.fld{appearance:none;-webkit-appearance:none}
     <div class="nowbox">
       <h2 class="now" id="now">Get ready</h2>
       <p class="cue" id="cue"></p>
+      <a class="lookup" id="lookup" target="_blank" rel="noopener noreferrer" hidden>Look it up</a>
     </div>
 
     <div class="next" id="next"></div>
@@ -499,7 +506,7 @@ select.fld{appearance:none;-webkit-appearance:none}
 
 <!-- ============ DONE ============ -->
 <section class="screen done" id="donescreen" hidden>
-  <h2>Nice work</h2>
+  <h2 id="d-head">Nice work</h2>
   <div class="tally">
     <div><b class="tnum" id="d-time">0</b><span>minutes</span></div>
     <div><b class="tnum" id="d-count">0</b><span>exercises</span></div>
@@ -1314,6 +1321,17 @@ function enter(i){
   $("next").innerHTML = nxt ? ("Next up <b></b>") : "Last one";
   if(nxt) $("next").querySelector("b").textContent=nxt.n;
 
+  // During a rest the screen is about what is coming, so the link follows it.
+  const named = (s.t==="rest"||s.t==="break") ? nxt : s;
+  const look=$("lookup");
+  if(named){
+    const plain=named.n.split(" \u00b7 ")[0];
+    look.href="https://www.youtube.com/results?search_query="+
+              encodeURIComponent(plain+" exercise how to");
+    look.textContent="Look up "+plain.toLowerCase();
+    look.hidden=false;
+  } else look.hidden=true;
+
   paintPips();
   if(!P.paused) lockScreen();   // iOS drops the lock quietly, so take it back
 
@@ -1355,10 +1373,15 @@ function advance(dir){
   enter(n);
 }
 
-function recordSession(){
-  if(P.done<3) return;                       // too short to count as a session
-  const worked=P.segs.slice(0,P.i+1);
-  const names=[...new Set(worked.filter(x=>x.t==="work"||x.t==="hold").map(x=>x.n))];
+/* What you actually got through, so ending early still counts for the week. */
+function doneSoFar(complete){
+  const segs = complete ? P.segs.slice() : P.segs.slice(0,P.i);
+  return {segs, secs: segs.reduce((a,x)=>a+x.d,0)};
+}
+
+function recordSession(segs,secs){
+  const names=[...new Set(segs.filter(x=>x.t==="work"||x.t==="hold").map(x=>x.n))];
+  if(!names.length) return false;            // only a warm-up, not a session
   const groups={};
   let impact=false,load=false;
   if(W&&W.sets){
@@ -1370,28 +1393,46 @@ function recordSession(){
     }));
   }
   logSession({t:Date.now(),mode:S.mode,groups,ex:names,impact,load,
-              mins:Math.round(P.elapsedBefore/60)});
+              mins:Math.round(secs/60)});
   renderWeek();
+  return true;
 }
 
-function finish(){
+function endWorkout(complete){
   P.paused=true;
-  P.elapsedBefore=P.total;
-  recordSession();
   releaseScreen();
-  beep(660,180); setTimeout(()=>beep(880,180),200); setTimeout(()=>beep(1180,320),400);
-  say("Workout complete");
-  $("d-time").textContent=Math.round(P.total/60);
-  $("d-count").textContent=P.done;
-  const kcal=kcalFor(P.segs);
+  try{ speechSynthesis.cancel(); }catch(e){}
+  const {segs,secs}=doneSoFar(complete);
+  const saved=recordSession(segs,secs);
+
+  if(!saved && !complete){                   // nothing worth keeping, so just go back
+    $("player").hidden=true; $("setup").hidden=false;
+    try{ window.scrollTo(0,0); }catch(e){}
+    return;
+  }
+  if(complete){
+    beep(660,180); setTimeout(()=>beep(880,180),200); setTimeout(()=>beep(1180,320),400);
+    say("Workout complete");
+  }
+
+  $("d-head").textContent = complete ? "Nice work" : "Good effort";
+  $("d-time").textContent=Math.round(secs/60);
+  $("d-count").textContent=segs.filter(x=>x.t==="work"||x.t==="hold").length;
+  const kcal=kcalFor(segs);
   $("d-kcal-box").hidden=!kcal;
   $("d-kcal").textContent=kcal;
-  $("d-note").textContent = kcal
+
+  const bits=[];
+  if(!complete) bits.push("Ended early and saved. It counts towards your week.");
+  bits.push(kcal
     ? "Calories are estimated from your weight and the clock, not measured. Treat it as a rough number."
-    : "Add your weight on the home screen and the app will estimate calories.";
+    : "Add your weight on the home screen and the app will estimate calories.");
+  $("d-note").textContent=bits.join(" ");
+
   $("player").hidden=true; $("donescreen").hidden=false;
   try{ window.scrollTo(0,0); }catch(e){}
 }
+function finish(){ endWorkout(true); }
 
 function togglePause(){
   P.paused=!P.paused;
@@ -1405,13 +1446,7 @@ function togglePause(){
   else { P.endAt=performance.now()+P.left*1000; lockScreen(); }
 }
 
-function quit(){
-  P.paused=true;
-  recordSession();
-  releaseScreen();
-  try{ speechSynthesis.cancel(); }catch(e){}
-  $("player").hidden=true; $("setup").hidden=false;
-}
+function quit(){ endWorkout(false); }
 
 /* keep the screen on while a workout is running */
 let WL=null;
