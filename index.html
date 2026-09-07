@@ -236,11 +236,19 @@ select.fld{appearance:none;-webkit-appearance:none}
   font-size:clamp(32px,8.4vw,46px);line-height:1.06;margin:0;text-wrap:balance;
 }
 .cue{margin:9px 0 0;color:var(--cue);font-size:clamp(19px,4.8vw,23px);line-height:1.3;text-wrap:balance}
-.lookup{
-  display:inline-block;margin-top:12px;font-size:14px;color:var(--dim);
-  text-decoration:none;border-bottom:1px solid var(--line2);padding-bottom:2px;
+/* Tap target is 40px so it is easy to hit, but the glyph inside stays small
+   so it sits beside the exercise name without competing with it. */
+.nowline{display:flex;align-items:center;justify-content:center;gap:6px}
+.info{
+  flex:none;width:40px;height:40px;margin:-8px -8px -8px 0;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--dim);text-decoration:none;
 }
-.lookup:active{color:var(--muted)}
+.info svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.info .dot{fill:currentColor;stroke:none}
+.info:active{color:var(--text)}
+.next .info{width:34px;height:34px;margin:-8px 0 -8px -2px;vertical-align:middle}
+.next{display:flex;align-items:center;justify-content:center;gap:2px}
 .next{
   font-size:17px;color:var(--dim);text-align:center;
   border-top:1px solid var(--line);padding-top:13px;width:100%;max-width:420px;
@@ -487,12 +495,29 @@ select.fld{appearance:none;-webkit-appearance:none}
     </div>
 
     <div class="nowbox">
-      <h2 class="now" id="now">Get ready</h2>
+      <div class="nowline">
+        <h2 class="now" id="now">Get ready</h2>
+        <a class="info" id="lookup" target="_blank" rel="noopener noreferrer"
+           aria-label="Look this exercise up on YouTube" title="Look it up" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.2"/><path d="M12 11v5.6"/>
+            <circle class="dot" cx="12" cy="7.6" r="1.15"/>
+          </svg>
+        </a>
+      </div>
       <p class="cue" id="cue"></p>
-      <a class="lookup" id="lookup" target="_blank" rel="noopener noreferrer" hidden>Look it up</a>
     </div>
 
-    <div class="next" id="next"></div>
+    <div class="next">
+      <span id="nexttext"></span>
+      <a class="info" id="lookupnext" target="_blank" rel="noopener noreferrer"
+         aria-label="Look the next exercise up on YouTube" title="Look it up" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.2"/><path d="M12 11v5.6"/>
+          <circle class="dot" cx="12" cy="7.6" r="1.15"/>
+        </svg>
+      </a>
+    </div>
   </div>
 
   <div class="ctrls">
@@ -1318,19 +1343,21 @@ function enter(i){
   $("now").textContent=s.n;
   $("cue").textContent=s.c||"";
   const nxt=P.segs.slice(i+1).find(x=>x.t==="work"||x.t==="hold"||x.t==="warmup"||x.t==="cooldown");
-  $("next").innerHTML = nxt ? ("Next up <b></b>") : "Last one";
-  if(nxt) $("next").querySelector("b").textContent=nxt.n;
+  $("nexttext").innerHTML = nxt ? ("Next up <b></b>") : "Last one";
+  if(nxt) $("nexttext").querySelector("b").textContent=nxt.n;
 
-  // During a rest the screen is about what is coming, so the link follows it.
-  const named = (s.t==="rest"||s.t==="break") ? nxt : s;
-  const look=$("lookup");
-  if(named){
-    const plain=named.n.split(" \u00b7 ")[0];
-    look.href="https://www.youtube.com/results?search_query="+
-              encodeURIComponent(plain+" exercise how to");
-    look.textContent="Look up "+plain.toLowerCase();
-    look.hidden=false;
-  } else look.hidden=true;
+  // The icon sits beside whichever exercise the screen is about: the current
+  // one, or during a rest the one coming next.
+  const resting = s.t==="rest"||s.t==="break";
+  const named = resting ? nxt : s;
+  const href = named
+    ? "https://www.youtube.com/results?search_query="+
+      encodeURIComponent(named.n.split(" \u00b7 ")[0]+" exercise how to")
+    : "";
+  [["lookup",!resting&&!!named],["lookupnext",resting&&!!nxt]].forEach(([id,show])=>{
+    const el=$(id);
+    if(show){ el.href=href; el.hidden=false; } else el.hidden=true;
+  });
 
   paintPips();
   if(!P.paused) lockScreen();   // iOS drops the lock quietly, so take it back
