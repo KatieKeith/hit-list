@@ -198,7 +198,7 @@ select.fld{appearance:none;-webkit-appearance:none}
    they came out as dots of assorted sizes on iOS. */
 .pips{position:relative;height:9px;margin:16px 18px 0;flex:none}
 .pip{
-  position:absolute;top:1px;height:7px;border-radius:4px;background:var(--surface2);
+  position:absolute;top:1px;height:7px;border-radius:3px;background:var(--surface2);
   transition:background .2s,box-shadow .2s;
 }
 .pip.done{background:var(--line2)}
@@ -275,7 +275,6 @@ select.fld{appearance:none;-webkit-appearance:none}
 </style>
 <style>
   html,body{background:#0C1016}
-  /* room for the notch and the home indicator when running full screen */
   .app{padding-top:env(safe-area-inset-top)}
 </style>
 </head>
@@ -1229,26 +1228,35 @@ const ARC=867.08;
 
 /* One mark per exercise, grouped into rounds, so you can see how far through
    the round you are and how many rounds are left. */
+/* One mark per exercise, grouped into rounds. The warm-up and the cool-down
+   collapse into a single mark each: they are not what you track progress by,
+   and on a phone every extra mark makes them all narrower. */
 function buildPips(){
   const box=$("pips"); box.innerHTML=""; P.pips=[];
   const items=[];
   P.segs.forEach((seg,i)=>{
     if(seg.t==="rest"||seg.t==="break") return;
-    const key = seg.t==="warmup" ? "w" : seg.t==="cooldown" ? "c" : ("r"+(seg.round||1));
-    items.push({i,t:seg.t,key});
+    if(seg.t==="warmup"||seg.t==="cooldown"){
+      const last=items[items.length-1];
+      if(last&&last.t===seg.t){ last.to=i; return; }
+      items.push({from:i,to:i,t:seg.t,key:seg.t});
+      return;
+    }
+    items.push({from:i,to:i,t:seg.t,key:"r"+(seg.round||1)});
   });
   const n=items.length;
   if(!n) return;
   let breaks=0;
   for(let k=1;k<n;k++) if(items[k].key!==items[k-1].key) breaks++;
-  const PIP_GAP=0.5, ROUND_GAP=2.2;                    // percent of the bar
+  const PIP_GAP=0.4, ROUND_GAP=1.8;                    // percent of the bar
   const gaps=(n-1-breaks)*PIP_GAP + breaks*ROUND_GAP;
   const w=Math.max(0.4,(100-gaps)/n);
   let x=0;
   items.forEach((it,k)=>{
     if(k>0) x += (it.key!==items[k-1].key ? ROUND_GAP : PIP_GAP);
     const pip=document.createElement("i");
-    pip.className="pip"; pip.dataset.t=it.t; pip.dataset.i=it.i;
+    pip.className="pip"; pip.dataset.t=it.t;
+    pip.dataset.from=it.from; pip.dataset.to=it.to;
     pip.style.left=x.toFixed(3)+"%";
     pip.style.width=w.toFixed(3)+"%";
     box.appendChild(pip); P.pips.push(pip);
@@ -1257,9 +1265,9 @@ function buildPips(){
 }
 function paintPips(){
   P.pips.forEach(pip=>{
-    const i=Number(pip.dataset.i);
-    pip.classList.toggle("done",i<P.i);
-    pip.classList.toggle("now",i===P.i);
+    const from=Number(pip.dataset.from), to=Number(pip.dataset.to);
+    pip.classList.toggle("done",P.i>to);
+    pip.classList.toggle("now",P.i>=from&&P.i<=to);
   });
 }
 const ACCENT={warmup:"var(--warmup)",work:"var(--work)",hold:"var(--flex)",
