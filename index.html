@@ -1,0 +1,1518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Interval workouts built to the length you ask for.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hit List">
+<meta name="theme-color" content="#0C1016">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Hit List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --ink:#0C1016;
+  --surface:#151B24;
+  --surface2:#1D2732;
+  --line:#2B3846;
+  --line2:#3A4A5C;
+  --text:#EAF0F7;
+  --muted:#8B9AAD;
+  --dim:#63748A;
+  --cue:#AFBECE;
+  --work:#F0A43A;
+  --rest:#45C8B0;
+  --warmup:#7FA8E8;
+  --cooldown:#A98BE0;
+  --flex:#C9A227;
+  --quit:#E2685C;
+  --r:14px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ink);
+  color:var(--text);
+  font-family:"Barlow",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  -webkit-text-size-adjust:100%;
+}
+button{font-family:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--work);outline-offset:2px}
+.cond{font-family:"Barlow Condensed","Barlow",sans-serif;letter-spacing:.01em}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* ---------- shell ---------- */
+.app{min-height:100dvh}
+/* Setup is a normal, growing block so it is readable whether the host frame
+   scrolls the document or simply sizes itself to the content. */
+#setup{display:block;padding-bottom:8px}
+.play,.done{display:flex;flex-direction:column}
+[hidden]{display:none!important}
+
+/* ---------- setup ---------- */
+.wrap{width:100%;max-width:560px;margin:0 auto;padding:0 18px}
+.mast{padding:26px 0 18px}
+.mast h1{
+  font-family:"Barlow Condensed","Barlow",sans-serif;
+  font-weight:700;font-size:42px;line-height:.95;margin:0;
+  text-transform:uppercase;letter-spacing:.02em;
+}
+.mast h1 span{color:var(--work)}
+.mast p{margin:6px 0 0;color:var(--muted);font-size:15px}
+
+.block{margin-bottom:22px}
+.lab{
+  display:block;font-size:11px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.13em;color:var(--dim);margin-bottom:9px;
+}
+
+/* segmented */
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px;gap:4px}
+.seg button{
+  flex:1;padding:11px 6px;border-radius:10px;font-weight:600;font-size:15px;
+  color:var(--muted);transition:background .15s,color .15s;
+}
+.seg button[aria-pressed="true"]{background:var(--surface2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+.seg.mode button[aria-pressed="true"]{background:var(--work);color:#191106;box-shadow:none}
+.seg.mode.flexmode button[aria-pressed="true"]{background:var(--flex);color:#191106}
+.seg.sm button{padding:8px 4px;font-size:13px}
+
+/* stepper */
+.step{display:flex;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.step button{width:56px;flex:none;font-size:26px;font-weight:500;color:var(--muted);padding:14px 0;line-height:1}
+.step button:active{background:var(--surface2)}
+.step .val{flex:1;text-align:center;padding:12px 0}
+.step .n{font-family:"Barlow Condensed",sans-serif;font-size:34px;font-weight:700;line-height:1;display:block}
+.step .u{font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:var(--dim);display:block;margin-top:3px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* priorities */
+.pri{display:flex;flex-direction:column;gap:8px}
+.pri-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px}
+.pri-row .nm{font-weight:500;font-size:15px}
+.pri-row .seg{padding:3px;gap:3px}
+.pri-row .seg button{padding:6px 9px;font-size:12px;border-radius:8px;min-width:44px}
+
+/* toggles */
+.toggles{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 12px;border-radius:10px;text-align:left}
+.tog:active{background:var(--surface2)}
+.tog .tt{font-weight:500;font-size:15px}
+.tog .ts{display:block;font-size:13px;color:var(--dim);font-weight:400;margin-top:1px}
+.sw{width:46px;height:28px;flex:none;border-radius:999px;background:var(--line);position:relative;transition:background .18s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:transform .18s,background .18s}
+.tog[aria-pressed="true"] .sw{background:var(--work)}
+.tog[aria-pressed="true"] .sw::after{transform:translateX(18px);background:#191106}
+
+/* preview */
+.prev{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.prev-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.prev-head .big{font-family:"Barlow Condensed",sans-serif;font-size:26px;font-weight:700;line-height:1}
+.prev-head .sub{font-size:13px;color:var(--muted)}
+.shuffle{font-size:13px;font-weight:600;color:var(--work);white-space:nowrap;padding:4px 2px}
+.prev-list{list-style:none;margin:0;padding:6px 0;max-height:290px;overflow-y:auto}
+.prev-list li{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:baseline;padding:8px 16px;font-size:16px}
+.prev-list li .ix{color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums}
+.prev-list li .tg{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
+.prev-list .sect{
+  grid-template-columns:1fr;padding:12px 16px 5px;font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.13em;color:var(--dim);
+}
+.prev-list .sect.w{color:var(--warmup)}
+.prev-list .sect.c{color:var(--cooldown)}
+.prev-list .sect.m{color:var(--work)}
+.flexmode-on .prev-list .sect.m{color:var(--flex)}
+
+/* this week */
+.week{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.wrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:11px 16px}
+.wrow+.wrow{border-top:1px solid var(--line)}
+.wrow span{font-size:15px;color:var(--muted)}
+.wrow b{font-family:"Barlow Condensed",sans-serif;font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.wrow b.met{color:var(--rest)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-top:1px solid var(--line)}
+.chip-g{
+  font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;
+  border:1px solid var(--line);color:var(--dim);background:var(--surface2);
+}
+.chip-g.on{color:var(--rest);border-color:var(--rest)}
+.chip-g.rest{color:var(--warmup);border-color:var(--warmup)}
+.weeknote{
+  margin:0;padding:0 16px 14px;font-size:13px;color:var(--dim);
+  border-top:0;text-wrap:balance;
+}
+
+/* your own exercises */
+.mine{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px}
+.mine-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px}
+.mine-head span{font-size:15px;color:var(--muted)}
+.mine-list{list-style:none;margin:0;padding:0}
+.mine-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-top:1px solid var(--line)}
+.mine-list .mn{font-size:15px}
+.mine-list .mm{display:block;font-size:12px;color:var(--dim);margin-top:1px}
+.mine-list .del{font-size:20px;color:var(--dim);line-height:1;padding:4px 8px;flex:none}
+.mine-form{display:flex;flex-direction:column;gap:10px;padding:12px;border-top:1px solid var(--line)}
+.fld{
+  width:100%;padding:13px 12px;border-radius:10px;font-family:inherit;font-size:16px;
+  background:var(--surface2);border:1px solid var(--line);color:var(--text);
+}
+.fld::placeholder{color:var(--dim)}
+select.fld{appearance:none;-webkit-appearance:none}
+.addbtn{
+  padding:14px;border-radius:10px;background:var(--work);color:#191106;
+  font-weight:700;font-size:16px;
+}
+.flexmode-on .addbtn{background:var(--flex)}
+.mine-form .tog{background:var(--surface2);border:1px solid var(--line)}
+
+/* start bar */
+.startbar{
+  position:sticky;bottom:0;margin-top:8px;
+  background:linear-gradient(to top,var(--ink) 62%,rgba(12,16,22,0));
+  padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+}
+.start{
+  display:block;width:100%;max-width:524px;margin:0 auto;padding:17px;
+  background:var(--work);color:#191106;border-radius:var(--r);
+  font-family:"Barlow Condensed",sans-serif;font-size:22px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.flexmode-on .start{background:var(--flex)}
+.start:active{filter:brightness(.92)}
+
+/* ---------- player ---------- */
+.play{--accent:var(--work);background:var(--ink);padding-bottom:12px}
+.done{background:var(--ink)}
+/* Positions are worked out in JS and set as percentages, so every mark is the
+   same size on every browser. Flex was leaving them to the layout engine and
+   they came out as dots of assorted sizes on iOS. */
+.pips{position:relative;height:9px;margin:16px 18px 0;flex:none}
+.pip{
+  position:absolute;top:1px;height:7px;border-radius:4px;background:var(--surface2);
+  transition:background .2s,box-shadow .2s;
+}
+.pip.done{background:var(--line2)}
+.pip.done[data-t="warmup"]{background:var(--warmup)}
+.pip.done[data-t="work"],.pip.done[data-t="hold"]{background:var(--work)}
+.flexmode-on .pip.done[data-t="hold"]{background:var(--flex)}
+.pip.done[data-t="cooldown"]{background:var(--cooldown)}
+.pip.now{background:var(--text);box-shadow:0 0 0 3px rgba(234,240,247,.18)}
+.phead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px 0}
+.chip{
+  font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;
+  color:var(--accent);
+}
+.rnd{font-size:14px;color:var(--dim);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.xbtn{font-size:14px;color:var(--dim);font-weight:600;padding:4px 0 4px 10px}
+
+.stage{display:flex;flex-direction:column;align-items:center;gap:14px;padding:12px 18px}
+.dial{position:relative;width:min(62vw,230px);aspect-ratio:1}
+.dial svg{width:100%;height:100%;display:block;transform:rotate(-90deg)}
+.dial .trk{fill:none;stroke:var(--surface2);stroke-width:9}
+.dial .arc{fill:none;stroke:var(--accent);stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .12s linear}
+.dial .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.count{
+  font-family:"Barlow Condensed",sans-serif;font-weight:700;
+  font-size:clamp(64px,19vw,100px);line-height:.86;font-variant-numeric:tabular-nums;
+}
+.count.sm{font-size:clamp(52px,16vw,86px)}
+.secs{font-size:13px;text-transform:uppercase;letter-spacing:.18em;color:var(--dim);margin-top:8px}
+.nowbox{text-align:center;max-width:470px}
+.now{
+  font-family:"Barlow Condensed",sans-serif;font-weight:700;
+  font-size:clamp(32px,8.4vw,46px);line-height:1.06;margin:0;text-wrap:balance;
+}
+.cue{margin:9px 0 0;color:var(--cue);font-size:clamp(19px,4.8vw,23px);line-height:1.3;text-wrap:balance}
+.next{
+  font-size:17px;color:var(--dim);text-align:center;
+  border-top:1px solid var(--line);padding-top:13px;width:100%;max-width:420px;
+}
+.next b{color:var(--muted);font-weight:600}
+
+.ctrls{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;
+  padding:8px 18px calc(16px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;width:100%;
+}
+.sec{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 8px;font-weight:600;font-size:17px;color:var(--muted);
+}
+.sec:active{background:var(--surface2)}
+.pp{
+  width:82px;height:82px;border-radius:50%;background:var(--accent);color:#191106;
+  display:flex;align-items:center;justify-content:center;
+}
+.pp svg{width:32px;height:32px;fill:currentColor}
+.pp:active{filter:brightness(.92)}
+.paused .count{opacity:.45}
+
+/* ---------- done ---------- */
+.done{align-items:center;text-align:center;padding:40px 24px}
+.done h2{font-family:"Barlow Condensed",sans-serif;font-size:56px;font-weight:700;text-transform:uppercase;margin:0;line-height:.95}
+.done .tally{display:flex;gap:30px;margin:26px 0 34px;justify-content:center}
+.done .tally div{min-width:82px}
+.done .tally b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:38px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.done .tally span{font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:var(--dim)}
+.done .row{display:flex;gap:12px;width:100%;max-width:340px}
+.dnote{margin:0 0 26px;font-size:14px;color:var(--dim);max-width:340px;text-wrap:balance}
+.done .row button{flex:1;padding:16px;border-radius:var(--r);font-weight:600;font-size:16px}
+.done .again{background:var(--work);color:#191106}
+.done .new{background:var(--surface);border:1px solid var(--line)}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
+</style>
+<style>
+  html,body{background:#0C1016}
+  /* room for the notch and the home indicator when running full screen */
+  .app{padding-top:env(safe-area-inset-top)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ============ SETUP ============ -->
+<section class="screen" id="setup">
+  <div class="wrap">
+    <header class="mast">
+      <h1>Hit<span>.</span>List</h1>
+      <p>Interval workouts built to the length you ask for.</p>
+    </header>
+
+    <div class="block">
+      <div class="seg mode" id="mode" role="group" aria-label="Workout type">
+        <button data-mode="strength" aria-pressed="true">Strength &amp; HIIT</button>
+        <button data-mode="flex" aria-pressed="false">Flexibility</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="lab">Total workout length</span>
+      <div class="step" data-step="minutes">
+        <button data-d="-1" aria-label="Less time">&minus;</button>
+        <div class="val"><span class="n tnum" id="v-minutes">30</span><span class="u">minutes</span></div>
+        <button data-d="1" aria-label="More time">+</button>
+      </div>
+    </div>
+
+    <div id="strength-only">
+      <div class="block duo">
+        <div>
+          <span class="lab">Work</span>
+          <div class="step" data-step="work">
+            <button data-d="-1" aria-label="Shorter work interval">&minus;</button>
+            <div class="val"><span class="n tnum" id="v-work">40</span><span class="u">seconds</span></div>
+            <button data-d="1" aria-label="Longer work interval">+</button>
+          </div>
+        </div>
+        <div>
+          <span class="lab">Rest</span>
+          <div class="step" data-step="rest">
+            <button data-d="-1" aria-label="Shorter rest">&minus;</button>
+            <div class="val"><span class="n tnum" id="v-rest">20</span><span class="u">seconds</span></div>
+            <button data-d="1" aria-label="Longer rest">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <span class="lab">Exercises per circuit</span>
+        <div class="seg sm" id="percircuit" role="group" aria-label="Exercises per circuit">
+          <button data-v="4">4</button><button data-v="5">5</button>
+          <button data-v="6" aria-pressed="true">6</button>
+          <button data-v="7">7</button><button data-v="8">8</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <span class="lab">Muscle group priority</span>
+        <div class="pri" id="pri"></div>
+      </div>
+
+      <div class="block">
+        <span class="lab">Equipment</span>
+        <div class="toggles">
+          <button class="tog" data-tog="db" aria-pressed="true">
+            <span class="tt">Dumbbells<span class="ts">Presses, rows, curls, thrusters</span></span><span class="sw"></span>
+          </button>
+          <button class="tog" data-tog="band" aria-pressed="true">
+            <span class="tt">Mat and resistance band<span class="ts">Banded glute and floor work</span></span><span class="sw"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="flex-only" hidden>
+      <div class="block">
+        <span class="lab">Hold each stretch for</span>
+        <div class="seg sm" id="hold" role="group" aria-label="Hold length">
+          <button data-v="30">30s</button>
+          <button data-v="45" aria-pressed="true">45s</button>
+          <button data-v="60">60s</button>
+          <button data-v="75">75s</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="lab">This week</span>
+      <div class="week">
+        <div class="wrow"><span>Strength sessions</span><b id="w-days">0 of 2</b></div>
+        <div class="wrow"><span>Bone loading sessions</span><b id="w-bone">0 of 2</b></div>
+        <div class="chips" id="w-chips"></div>
+        <p class="weeknote" id="w-note"></p>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="lab">Your own exercises</span>
+      <div class="mine">
+        <div class="mine-head">
+          <span id="mine-count">None added yet</span>
+          <button class="shuffle" id="mine-toggle">Add one</button>
+        </div>
+        <ul class="mine-list" id="mine-list"></ul>
+        <div class="mine-form" id="mine-form" hidden>
+          <div class="seg sm" id="cx-kind" role="group" aria-label="What kind">
+            <button data-v="strength" aria-pressed="true">Exercise</button>
+            <button data-v="stretch" aria-pressed="false">Stretch</button>
+          </div>
+          <input class="fld" id="cx-name" type="text" autocomplete="off"
+                 placeholder="Name, e.g. Hollow body crunch" maxlength="48">
+          <div id="cx-s-fields" style="display:flex;flex-direction:column;gap:10px">
+            <select class="fld" id="cx-group" aria-label="Muscle group"></select>
+            <div class="seg sm" id="cx-equip" role="group" aria-label="Equipment">
+              <button data-v="bw" aria-pressed="true">No kit</button>
+              <button data-v="db" aria-pressed="false">Dumbbells</button>
+              <button data-v="bd" aria-pressed="false">Band or mat</button>
+            </div>
+          </div>
+          <div id="cx-f-fields" hidden style="flex-direction:column;gap:10px">
+            <select class="fld" id="cx-pos" aria-label="Position">
+              <option value="1">Standing</option>
+              <option value="2">Kneeling or on the floor</option>
+              <option value="3">Seated</option>
+              <option value="4">Lying down</option>
+            </select>
+            <button class="tog" id="cx-sides" aria-pressed="true">
+              <span class="tt">Do both sides<span class="ts">Runs it twice, left then right</span></span><span class="sw"></span>
+            </button>
+          </div>
+          <input class="fld" id="cx-cue" type="text" autocomplete="off"
+                 placeholder="Form reminder (optional)" maxlength="70">
+          <button class="addbtn" id="cx-add">Add to my list</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="lab">Calorie estimate</span>
+      <div class="mine">
+        <div class="mine-form" style="border-top:0">
+          <input class="fld" id="cx-kg" type="number" inputmode="numeric"
+                 min="30" max="200" placeholder="Your weight in kg (optional)">
+          <p class="weeknote" style="padding:0">Only used to estimate calories, and only
+             stored on this phone. Leave it blank and the app skips the estimate.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="lab">Sound</span>
+      <div class="toggles">
+        <button class="tog" data-tog="beeps" aria-pressed="true">
+          <span class="tt">Countdown beeps<span class="ts">Three beeps before every change</span></span><span class="sw"></span>
+        </button>
+        <button class="tog" data-tog="voice" aria-pressed="true">
+          <span class="tt">Say the exercise<span class="ts">Reads each name aloud so you can look away</span></span><span class="sw"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="lab">Your workout</span>
+      <div class="prev">
+        <div class="prev-head">
+          <div>
+            <div class="big cond" id="p-time">30 min</div>
+            <div class="sub" id="p-shape">Circuit of 6, four rounds</div>
+          </div>
+          <button class="shuffle" id="shuffle">Shuffle</button>
+        </div>
+        <ul class="prev-list" id="p-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="startbar"><button class="start" id="start">Start workout</button></div>
+</section>
+
+<!-- ============ PLAYER ============ -->
+<section class="screen play" id="player" hidden>
+  <div class="pips" id="pips"></div>
+  <div class="phead">
+    <span class="chip" id="chip">Warm-up</span>
+    <span class="rnd" id="rnd"></span>
+    <button class="xbtn" id="quit">End</button>
+  </div>
+
+  <div class="stage">
+    <div class="dial">
+      <svg viewBox="0 0 300 300" aria-hidden="true">
+        <circle class="trk" cx="150" cy="150" r="138"></circle>
+        <circle class="arc" id="arc" cx="150" cy="150" r="138" stroke-dasharray="867.08" stroke-dashoffset="0"></circle>
+      </svg>
+      <div class="mid">
+        <div class="count cond" id="count">40</div>
+        <div class="secs" id="secslab">seconds</div>
+      </div>
+    </div>
+
+    <div class="nowbox">
+      <h2 class="now" id="now">Get ready</h2>
+      <p class="cue" id="cue"></p>
+    </div>
+
+    <div class="next" id="next"></div>
+  </div>
+
+  <div class="ctrls">
+    <button class="sec" id="back">Back</button>
+    <button class="pp" id="pp" aria-label="Pause">
+      <svg viewBox="0 0 24 24" id="ppicon"><rect x="5" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="14.5" y="4" width="4.5" height="16" rx="1.2"></rect></svg>
+    </button>
+    <button class="sec" id="skip">Skip</button>
+  </div>
+</section>
+
+<!-- ============ DONE ============ -->
+<section class="screen done" id="donescreen" hidden>
+  <h2>Nice work</h2>
+  <div class="tally">
+    <div><b class="tnum" id="d-time">0</b><span>minutes</span></div>
+    <div><b class="tnum" id="d-count">0</b><span>exercises</span></div>
+    <div id="d-kcal-box"><b class="tnum" id="d-kcal">0</b><span>calories</span></div>
+  </div>
+  <p class="dnote" id="d-note"></p>
+  <div class="row">
+    <button class="again" id="home">Back to my stats</button>
+  </div>
+</section>
+
+</div>
+
+<script>
+"use strict";
+
+/* ===================== data ===================== */
+const GROUPS=[
+  {id:"legs",   name:"Legs"},
+  {id:"glutes", name:"Glutes"},
+  {id:"core",   name:"Core"},
+  {id:"abs",    name:"Abs"},
+  {id:"upper",  name:"Upper body"},
+  {id:"cardio", name:"Cardio"}
+];
+
+// e: bw = no kit, db = dumbbells, bd = band or mat
+const EX=[
+/* legs */
+{n:"Air squat",g:"legs",e:"bw",c:"Chest up, weight in the heels",d:2},
+{n:"Reverse lunge",g:"legs",e:"bw",c:"Step back, back knee to the floor"},
+{n:"Forward lunge",g:"legs",e:"bw",c:"Long step, front knee over the ankle"},
+{n:"Split squat",g:"legs",e:"bw",c:"Back foot on a chair, drop straight down"},
+{n:"Wall sit",g:"legs",e:"bw",c:"Thighs level, back flat to the wall"},
+{n:"Squat pulse",g:"legs",e:"bw",c:"Hold the bottom, small pulses"},
+{n:"Curtsy lunge",g:"legs",e:"bw",c:"Cross the back leg behind, hips square"},
+{n:"Cossack squat",g:"legs",e:"bw",c:"Wide stance, sink to one side"},
+{n:"Calf raise",g:"legs",e:"bw",c:"Slow up, slower down",d:1},
+{n:"Sumo squat",g:"legs",e:"bw",c:"Toes out, knees track the toes"},
+{n:"Goblet squat",g:"legs",e:"db",c:"Dumbbell at the chest, elbows inside the knees",b:"load"},
+{n:"Dumbbell lunge",g:"legs",e:"db",c:"Weights by your sides, tall through the chest",b:"load"},
+{n:"Dumbbell step-up",g:"legs",e:"db",c:"Drive through the top foot, control the way down",b:"load"},
+{n:"Romanian deadlift",g:"legs",e:"db",c:"Hinge at the hips, soft knees, flat back",b:"load"},
+{n:"Dumbbell sumo squat",g:"legs",e:"db",c:"One weight between the legs, wide stance",b:"load"},
+{n:"Dumbbell front squat",g:"legs",e:"db",c:"Weights at the shoulders, elbows high",b:"load"},
+{n:"Banded squat",g:"legs",e:"bd",c:"Band above the knees, push them out"},
+{n:"Lateral band walk",g:"legs",e:"bd",c:"Half squat, small steps sideways"},
+{n:"Monster walk",g:"legs",e:"bd",c:"Band at the ankles, step forward and out"},
+/* glutes */
+{n:"Glute bridge",g:"glutes",e:"bw",c:"Squeeze at the top, ribs down"},
+{n:"Single-leg glute bridge",g:"glutes",e:"bw",c:"One foot up, hips level"},
+{n:"Donkey kick",g:"glutes",e:"bw",c:"On all fours, heel to the ceiling"},
+{n:"Fire hydrant",g:"glutes",e:"bw",c:"Knee out to the side, back still"},
+{n:"Frog pump",g:"glutes",e:"bw",c:"Soles together, drive the hips up"},
+{n:"Hip thrust",g:"glutes",e:"bw",c:"Shoulders on the sofa, chin tucked"},
+{n:"Bridge pulse",g:"glutes",e:"bw",c:"Hold at the top, small pulses"},
+{n:"Kneeling kickback",g:"glutes",e:"bw",c:"Straight leg back, no arch in the low back"},
+{n:"Dumbbell hip thrust",g:"glutes",e:"db",c:"Weight across the hips, full lockout",b:"load"},
+{n:"Weighted glute bridge",g:"glutes",e:"db",c:"Weight on the hips, pause at the top",b:"load"},
+{n:"Single-leg deadlift",g:"glutes",e:"db",c:"Hinge forward, back leg long behind",b:"load"},
+{n:"Banded glute bridge",g:"glutes",e:"bd",c:"Band above the knees, press out as you rise"},
+{n:"Clamshell",g:"glutes",e:"bd",c:"On your side, feet together, knee opens"},
+{n:"Banded kickback",g:"glutes",e:"bd",c:"Push against the band, slow return"},
+{n:"Banded fire hydrant",g:"glutes",e:"bd",c:"Knee out against the band, hips square"},
+/* core */
+{n:"Forearm plank",g:"core",e:"bw",c:"Straight line, squeeze the glutes"},
+{n:"Side plank",g:"core",e:"bw",c:"Hips stacked and lifted"},
+{n:"Bird dog",g:"core",e:"bw",c:"Opposite arm and leg, keep the hips level"},
+{n:"Dead bug",g:"core",e:"bw",c:"Low back pressed into the floor"},
+{n:"Plank shoulder tap",g:"core",e:"bw",c:"Wide feet, stop the hips rocking"},
+{n:"Hollow hold",g:"core",e:"bw",c:"Low back down, arms and legs long"},
+{n:"Superman",g:"core",e:"bw",c:"Lift chest and thighs, look at the floor"},
+{n:"Plank up-down",g:"core",e:"bw",c:"Forearms to hands and back, minimal sway"},
+{n:"High plank hold",g:"core",e:"bw",c:"Hands under the shoulders, ribs down"},
+{n:"Side plank dip",g:"core",e:"bw",c:"Hip to the floor, then drive it up"},
+{n:"Bear hold",g:"core",e:"bw",c:"Knees an inch off the floor, flat back"},
+{n:"Renegade row",g:"core",e:"db",c:"Plank on the weights, row without twisting"},
+{n:"Suitcase hold",g:"core",e:"db",c:"One heavy weight, stay upright"},
+{n:"Overhead carry hold",g:"core",e:"db",c:"Weight locked out above, ribs pulled down"},
+{n:"Banded dead bug",g:"core",e:"bd",c:"Band overhead, pull down as the leg extends"},
+{n:"Pallof press",g:"core",e:"bd",c:"Press straight out, resist the twist"},
+/* abs */
+{n:"Crunch",g:"abs",e:"bw",c:"Chin off the chest, curl the ribs down"},
+{n:"Bicycle crunch",g:"abs",e:"bw",c:"Slow, opposite elbow to knee"},
+{n:"Leg raise",g:"abs",e:"bw",c:"Hands under the hips, lower slowly"},
+{n:"Flutter kick",g:"abs",e:"bw",c:"Small fast kicks, low back down"},
+{n:"Russian twist",g:"abs",e:"bw",c:"Lean back, rotate from the ribs"},
+{n:"Sit-up",g:"abs",e:"bw",c:"Roll up one vertebra at a time"},
+{n:"Reverse crunch",g:"abs",e:"bw",c:"Knees to the chest, lift the hips"},
+{n:"Toe touch",g:"abs",e:"bw",c:"Legs up, reach for the toes"},
+{n:"Heel tap",g:"abs",e:"bw",c:"Shoulders off the floor, tap side to side"},
+{n:"V-up",g:"abs",e:"bw",c:"Meet in the middle, straight limbs"},
+{n:"Scissor kick",g:"abs",e:"bw",c:"Cross the legs over, keep them low"},
+{n:"Cross jackknife",g:"abs",e:"bw",c:"One arm to the opposite leg, alternate"},
+{n:"Weighted Russian twist",g:"abs",e:"db",c:"Weight at the chest, twist slowly"},
+{n:"Weighted sit-up",g:"abs",e:"db",c:"Weight on the chest, controlled all the way"},
+{n:"Woodchop",g:"abs",e:"db",c:"Hip to opposite shoulder, pivot the back foot"},
+{n:"Dumbbell side bend",g:"abs",e:"db",c:"One weight, bend straight down the side"},
+/* upper */
+{n:"Push-up",g:"upper",e:"bw",c:"Elbows back at 45 degrees, body in a line"},
+{n:"Incline push-up",g:"upper",e:"bw",c:"Hands on the sofa or a chair"},
+{n:"Knee push-up",g:"upper",e:"bw",c:"Hips low, straight line knees to head"},
+{n:"Tricep dip",g:"upper",e:"bw",c:"Chair behind you, elbows point back"},
+{n:"Pike push-up",g:"upper",e:"bw",c:"Hips high, crown towards the floor"},
+{n:"Diamond push-up",g:"upper",e:"bw",c:"Hands together, elbows tight"},
+{n:"Wide push-up",g:"upper",e:"bw",c:"Hands wide, chest to the floor"},
+{n:"Down dog to plank",g:"upper",e:"bw",c:"Flow between the two, strong shoulders"},
+{n:"Shoulder press",g:"upper",e:"db",c:"Press overhead, ribs down, no arch"},
+{n:"Bent-over row",g:"upper",e:"db",c:"Flat back, pull the elbows past the ribs"},
+{n:"Chest press",g:"upper",e:"db",c:"On the floor, elbows to a soft touch"},
+{n:"Bicep curl",g:"upper",e:"db",c:"Elbows pinned to the sides"},
+{n:"Hammer curl",g:"upper",e:"db",c:"Palms facing in, no swing"},
+{n:"Tricep extension",g:"upper",e:"db",c:"Weight behind the head, elbows still"},
+{n:"Lateral raise",g:"upper",e:"db",c:"Light weight, lift to shoulder height"},
+{n:"Front raise",g:"upper",e:"db",c:"Straight arms up to eye level"},
+{n:"Reverse fly",g:"upper",e:"db",c:"Hinge forward, squeeze the shoulder blades"},
+{n:"Arnold press",g:"upper",e:"db",c:"Rotate the palms out as you press"},
+{n:"Dumbbell pullover",g:"upper",e:"db",c:"On your back, arms long over the head"},
+{n:"Upright row",g:"upper",e:"db",c:"Lead with the elbows, stop at the chest"},
+{n:"Band row",g:"upper",e:"bd",c:"Band around the feet, pull to the ribs"},
+{n:"Band pull-apart",g:"upper",e:"bd",c:"Arms straight, open the chest"},
+{n:"Banded overhead press",g:"upper",e:"bd",c:"Stand on the band, press tall"},
+{n:"Banded bicep curl",g:"upper",e:"bd",c:"Stand on the band, slow on the way down"},
+{n:"Tricep pushdown",g:"upper",e:"bd",c:"Band anchored high, lock the elbows out"},
+{n:"Face pull",g:"upper",e:"bd",c:"Pull to the forehead, elbows high"},
+{n:"Banded chest press",g:"upper",e:"bd",c:"Band behind the back, press forward"},
+/* cardio */
+{n:"Jumping jack",g:"cardio",e:"bw",c:"Full range, soft landings",b:"impact"},
+{n:"Mountain climber",g:"cardio",e:"bw",c:"Hips low, drive the knees in fast"},
+{n:"High knees",g:"cardio",e:"bw",c:"Knees to hip height, quick feet"},
+{n:"Burpee",g:"cardio",e:"bw",c:"Chest to the floor, jump at the top",b:"impact"},
+{n:"Squat jump",g:"cardio",e:"bw",c:"Land quietly, sink straight back down",b:"impact"},
+{n:"Skater hop",g:"cardio",e:"bw",c:"Bound side to side, stick the landing",b:"impact"},
+{n:"Butt kick",g:"cardio",e:"bw",c:"Heels to the backside, stay light"},
+{n:"Star jump",g:"cardio",e:"bw",c:"Explode out, land soft in a squat",b:"impact"},
+{n:"Fast feet",g:"cardio",e:"bw",c:"Tiny quick steps, stay low"},
+{n:"Tuck jump",g:"cardio",e:"bw",c:"Knees to the chest, absorb the landing",b:"impact"},
+{n:"Plank jack",g:"cardio",e:"bw",c:"Plank, jump the feet wide and back"},
+{n:"Sprawl",g:"cardio",e:"bw",c:"Down to the floor and straight back up"},
+{n:"Lateral shuffle",g:"cardio",e:"bw",c:"Low stance, shuffle two steps each way"},
+{n:"Jump lunge",g:"cardio",e:"bw",c:"Swap the legs in the air, soft landings",b:"impact"},
+{n:"Dumbbell thruster",g:"cardio",e:"db",c:"Squat then press in one movement",b:"load"},
+{n:"Dumbbell swing",g:"cardio",e:"db",c:"Hinge and snap the hips, arms relaxed"},
+{n:"Push press",g:"cardio",e:"db",c:"Dip the knees, drive the weight up",b:"load"},
+{n:"Man maker",g:"cardio",e:"db",c:"Row, push-up, then press overhead"},
+/* squats */
+{n:"Prisoner squat",g:"legs",e:"bw",c:"Hands behind the head, elbows wide",d:2},
+{n:"Pause squat",g:"legs",e:"bw",c:"Three seconds at the bottom, then drive up"},
+{n:"Heels-elevated squat",g:"legs",e:"bw",c:"Heels on a book, chest upright"},
+{n:"Narrow squat",g:"legs",e:"bw",c:"Feet together, knees travel forward",d:2},
+{n:"Dumbbell pause squat",g:"legs",e:"db",c:"Weight at the chest, hold the bottom",b:"load"},
+{n:"Banded pause squat",g:"legs",e:"bd",c:"Band above the knees, push out and hold low"},
+{n:"Banded sumo squat",g:"legs",e:"bd",c:"Wide stance, drive the knees into the band"},
+/* deadlifts */
+{n:"Dumbbell deadlift",g:"legs",e:"db",c:"Weights outside the feet, flat back, push the floor away",b:"load"},
+{n:"Sumo deadlift",g:"legs",e:"db",c:"Wide stance, one weight between the feet",b:"load"},
+{n:"Banded deadlift",g:"legs",e:"bd",c:"Stand on the band, hinge and stand tall",b:"load"},
+/* glutes */
+{n:"Banded hip abduction",g:"glutes",e:"bd",c:"On your side, band at the knees, lift and lower"},
+{n:"Curtsy pulse",g:"glutes",e:"bw",c:"Hold the curtsy low, small pulses"},
+/* core and abs */
+{n:"Hollow body crunch",g:"core",e:"bw",c:"Arms overhead and legs low, close them together and open slowly"},
+{n:"Hollow rock",g:"core",e:"bw",c:"Hold the hollow shape and rock from the shoulders"},
+{n:"Plank reach",g:"core",e:"bw",c:"Forearm plank, reach one arm forward"},
+{n:"Straight-leg sit-up",g:"abs",e:"bw",c:"Legs long, reach past the toes"},
+/* arms and shoulders */
+{n:"Single-arm tricep extension",g:"upper",e:"db",c:"One weight behind the head, elbow points at the ceiling"},
+{n:"Skull crusher",g:"upper",e:"db",c:"On your back, lower to the forehead, elbows still"},
+{n:"Concentration curl",g:"upper",e:"db",c:"Elbow braced on the thigh, slow all the way down"},
+{n:"Cross-body hammer curl",g:"upper",e:"db",c:"Curl across towards the opposite shoulder"},
+{n:"Drag curl",g:"upper",e:"db",c:"Drag the weights up the body, elbows pull back"},
+{n:"Single-arm row",g:"upper",e:"db",c:"One hand braced, pull the elbow to the hip"},
+{n:"Shoulder halo",g:"upper",e:"db",c:"One weight, circle it slowly around the head"},
+/* full body */
+{n:"Squat to press",g:"cardio",e:"db",c:"Squat, then press overhead as you stand",b:"load"},
+{n:"Devil press",g:"cardio",e:"db",c:"Burpee, then swing both weights overhead",b:"load"},
+{n:"Lateral lunge",g:"legs",e:"bw",c:"Step wide, sit back into that hip, other leg stays straight"},
+{n:"Dumbbell lateral lunge",g:"legs",e:"db",c:"Weight at the chest, sit into the stepping hip",b:"load"},
+{n:"Pogo hop",g:"cardio",e:"bw",c:"Small fast hops, stiff ankles, stay tall",b:"impact"},
+{n:"Heel drop",g:"cardio",e:"bw",c:"Rise onto the toes, then drop the heels hard to the floor",b:"impact"}
+];
+
+const WARMUP=[
+{n:"March on the spot",c:"Lift the knees, swing the arms"},
+{n:"Arm circles",c:"Big slow circles, both directions"},
+{n:"Hip circles",c:"Hands on the hips, wide slow circles"},
+{n:"Leg swings",c:"Hold something, swing front to back"},
+{n:"Shoulder rolls",c:"Roll back, open across the chest"},
+{n:"Torso twist",c:"Feet planted, rotate side to side"},
+{n:"Cat-cow",c:"On all fours, arch and round the spine"},
+{n:"Knee hugs",c:"Pull one knee up to the chest, alternate"},
+{n:"Inchworm walkout",c:"Walk the hands out to a plank and back"},
+{n:"Slow bodyweight squat",c:"Sink low, pause at the bottom"},
+{n:"Side bend",c:"Reach one arm over, stretch the side"},
+{n:"Ankle rolls",c:"Both directions, one foot at a time"},
+{n:"Jog on the spot",c:"Easy pace, get the blood moving"},
+{n:"Standing hamstring sweep",c:"Heel out, sweep the hands to the floor"}
+];
+
+const COOLDOWN=[
+{n:"Hamstring stretch",c:"One leg long, hinge at the hip"},
+{n:"Quad stretch",c:"Heel to the backside, knees together"},
+{n:"Child's pose",c:"Knees wide, arms long, breathe out"},
+{n:"Chest opener",c:"Hands behind the back, lift the chest"},
+{n:"Figure-four stretch",c:"Ankle on the opposite knee, sit back"},
+{n:"Cobra stretch",c:"On your front, press the chest up"},
+{n:"Shoulder stretch",c:"Arm across the body, pull it in"},
+{n:"Calf stretch",c:"Back heel down, lean into the wall"},
+{n:"Seated twist",c:"Sit tall, rotate and hold"},
+{n:"Butterfly stretch",c:"Soles together, let the knees drop"},
+{n:"Downward dog",c:"Hips high, pedal out the heels"},
+{n:"Neck release",c:"Ear to the shoulder, no pulling"},
+{n:"Hip flexor lunge",c:"Back knee down, push the hip forward"},
+{n:"Lying spinal twist",c:"Knees over to one side, shoulders down"}
+];
+
+// ord: 1 standing, 2 kneeling and floor, 3 seated, 4 lying. s = do both sides.
+const STRETCH=[
+{n:"Standing forward fold",ord:1,s:false,c:"Soft knees, let the head hang heavy"},
+{n:"Standing quad stretch",ord:1,s:true,c:"Knees together, push the hip forward"},
+{n:"Standing side bend",ord:1,s:true,c:"Reach over, keep both feet planted"},
+{n:"Doorway chest stretch",ord:1,s:true,c:"Forearm on the frame, turn away"},
+{n:"Standing calf stretch",ord:1,s:true,c:"Back leg straight, heel pressed down"},
+{n:"Overhead triceps stretch",ord:1,s:true,c:"Elbow behind the head, gentle press"},
+{n:"Cross-body shoulder stretch",ord:1,s:true,c:"Arm across the chest, draw it in"},
+{n:"Neck side stretch",ord:1,s:true,c:"Ear towards the shoulder, breathe"},
+{n:"Standing figure-four",ord:1,s:true,c:"Ankle on the knee, sit back and hold"},
+{n:"Cat-cow flow",ord:2,s:false,c:"Move with the breath, no rush"},
+{n:"Child's pose",ord:2,s:false,c:"Knees wide, forehead down, long arms"},
+{n:"Thread the needle",ord:2,s:true,c:"Arm under the body, shoulder to the mat"},
+{n:"Low lunge hip flexor",ord:2,s:true,c:"Back knee down, tuck the tailbone"},
+{n:"Pigeon pose",ord:2,s:true,c:"Front shin forward, sink the hips level"},
+{n:"Lizard lunge",ord:2,s:true,c:"Foot outside the hand, drop the hips"},
+{n:"Half-kneeling hamstring",ord:2,s:true,c:"Front leg straight, hinge over it"},
+{n:"Downward dog",ord:2,s:false,c:"Hips high, press the heels towards the floor"},
+{n:"Cobra stretch",ord:2,s:false,c:"Elbows soft, open across the chest"},
+{n:"Sphinx pose",ord:2,s:false,c:"Forearms down, long through the neck"},
+{n:"Puppy pose",ord:2,s:false,c:"Hips over the knees, chest melts down"},
+{n:"Frog stretch",ord:2,s:false,c:"Knees wide, rock gently back"},
+{n:"Seated forward fold",ord:3,s:false,c:"Lead with the chest, not the head"},
+{n:"Butterfly stretch",ord:3,s:false,c:"Soles together, sit tall then fold"},
+{n:"Seated spinal twist",ord:3,s:true,c:"Sit tall, rotate from the ribs"},
+{n:"Head-to-knee stretch",ord:3,s:true,c:"One leg out, fold over it"},
+{n:"Seated wide-leg fold",ord:3,s:false,c:"Legs wide, walk the hands forward"},
+{n:"Wrist stretch",ord:3,s:true,c:"Palm up, gently draw the fingers back"},
+{n:"Lying spinal twist",ord:4,s:true,c:"Knees over, both shoulders stay down"},
+{n:"Knees to chest",ord:4,s:false,c:"Hug both knees, rock side to side"},
+{n:"Happy baby",ord:4,s:false,c:"Hold the feet, knees towards the armpits"},
+{n:"Reclined figure-four",ord:4,s:true,c:"Pull the back thigh in towards you"},
+{n:"Lying hamstring stretch",ord:4,s:true,c:"Leg up straight, hold behind the thigh"},
+{n:"Reclined butterfly",ord:4,s:false,c:"Soles together, arms wide, breathe"},
+{n:"Legs up the wall",ord:4,s:false,c:"Sit close to the wall, let the legs rest"},
+{n:"Hero pose",ord:3,s:false,c:"Kneel and sit between the heels, chest tall"},
+{n:"Reclined hero",ord:3,s:false,c:"From hero, lean back onto the hands or elbows"},
+{n:"Cow face arms",ord:3,s:true,c:"One arm over, one under, hook the fingers"},
+{n:"Cow face legs",ord:3,s:true,c:"Knees stacked, sit even through both hips"},
+{n:"Seated side stretch",ord:3,s:true,c:"Sit cross-legged, reach one arm up and over"},
+{n:"Garland pose",ord:1,s:false,c:"Deep squat, elbows press the knees wide"},
+{n:"Eagle arms",ord:1,s:true,c:"Wrap the arms, lift the elbows to shoulder height"},
+{n:"Pyramid pose",ord:1,s:true,c:"Legs staggered and straight, fold over the front leg"},
+{n:"Triangle pose",ord:1,s:true,c:"Legs wide, hand to the shin, open the chest up"},
+{n:"Wide-legged forward fold",ord:1,s:false,c:"Feet wide, hinge from the hips, head hangs"},
+{n:"Half splits",ord:2,s:true,c:"Front leg straight, hips back over the back knee"},
+{n:"Camel pose",ord:2,s:false,c:"Kneel tall, hands to the heels, lift the chest"},
+{n:"Sleeping pigeon",ord:2,s:true,c:"Fold forward over the front shin"},
+{n:"Bridge pose hold",ord:4,s:false,c:"Feet hip-width, lift the hips and hold"}
+];
+
+/* ===================== settings ===================== */
+const DEFAULTS={
+  mode:"strength", minutes:30, work:40, rest:20, perCircuit:6, hold:45,
+  db:true, band:true, beeps:true, voice:true,
+  // Katie walks a lot, so legs get less and the neglected groups get more.
+  pri:{legs:1,glutes:2,core:3,abs:3,upper:3,cardio:2},
+  custom:[],
+  log:[],
+  kg:0
+};
+const LIMITS={minutes:[5,75,5],work:[15,90,5],rest:[5,60,5]};
+let S=load();
+
+function load(){
+  try{
+    const raw=localStorage.getItem("hitlist");
+    if(raw){const o=JSON.parse(raw);return{...DEFAULTS,...o,pri:{...DEFAULTS.pri,...(o.pri||{})},custom:Array.isArray(o.custom)?o.custom:[],log:Array.isArray(o.log)?o.log:[]};}
+  }catch(e){}
+  return {...DEFAULTS,pri:{...DEFAULTS.pri},custom:[],log:[]};
+}
+function save(){ try{ localStorage.setItem("hitlist",JSON.stringify(S)); }catch(e){} }
+
+/* ===================== helpers ===================== */
+const $=id=>document.getElementById(id);
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const PRI_LABELS=["Off","Low","Med","High"];
+
+/* ---------- training log ----------
+   ACSM: each major muscle group two to three times a week, at least 48 hours
+   apart. WHO: strengthening on two or more days a week, all major groups.
+   Bone evidence for women through the menopause transition: resistance work
+   plus impact loading, two to three times a week. The log is what lets the
+   app act on any of that instead of just claiming it. */
+const HOUR=3600e3, DAY=24*HOUR;
+
+function logSession(entry){
+  S.log.unshift(entry);
+  S.log=S.log.slice(0,40);
+  save();
+}
+function since(pred){
+  const e=S.log.find(pred);
+  return e ? (Date.now()-e.t)/HOUR : null;
+}
+/* Hours since this muscle group last did real work, or null if never. */
+function groupRested(gid){
+  return since(e=>e.groups&&e.groups[gid]>0);
+}
+function thisWeek(){
+  const cut=Date.now()-7*DAY;
+  return S.log.filter(e=>e.t>=cut);
+}
+function weekStats(){
+  const w=thisWeek();
+  const strength=w.filter(e=>e.mode==="strength");
+  const groups={};
+  GROUPS.forEach(g=>groups[g.id]=0);
+  strength.forEach(e=>{ for(const k in (e.groups||{})) groups[k]=(groups[k]||0)+e.groups[k]; });
+  return {
+    days:strength.length,
+    flex:w.filter(e=>e.mode==="flex").length,
+    groups,
+    bone:strength.filter(e=>e.impact||e.load).length,
+    impact:strength.filter(e=>e.impact).length
+  };
+}
+/* Names used in the three most recent strength sessions, so the picker can
+   steer away from them. */
+function recentNames(){
+  const set=new Set();
+  S.log.filter(e=>e.mode==="strength").slice(0,3)
+       .forEach(e=>(e.ex||[]).forEach(n=>set.add(n)));
+  return set;
+}
+
+function myStrength(){ return S.custom.filter(x=>x.kind==="strength"); }
+function myStretch(){ return S.custom.filter(x=>x.kind==="stretch"); }
+function pool(){
+  const loaded=S.db||S.band;
+  return EX.concat(myStrength())
+    .filter(x=>x.e==="bw"||(x.e==="db"&&S.db)||(x.e==="bd"&&S.band))
+    // d:1 walking already trains this. d:2 only worth skipping when there is
+    // a loaded alternative available.
+    .filter(x=>x.d!==1 && !(x.d===2 && loaded));
+}
+
+/* How much this group should feature right now: your priority, damped while
+   it is still inside the 48-hour recovery window ACSM recommends. */
+function liveWeight(gid){
+  const base=S.pri[gid];
+  if(base<=0) return 0;
+  const h=groupRested(gid);
+  if(h===null) return base;
+  if(h<24) return Math.max(0.05,base*0.2);
+  if(h<48) return Math.max(0.1,base*0.5);
+  return base;
+}
+
+/* Weighted pick across groups. Avoids the same group twice in a row, never
+   repeats an exercise inside one circuit, and steers away from anything used
+   in the last three sessions unless the group has nothing else left. */
+function pickSet(count){
+  const p=pool();
+  const recent=recentNames();
+  const live=GROUPS.filter(g=>liveWeight(g.id)>0&&p.some(x=>x.g===g.id));
+  const out=[],used=new Set();
+  if(!live.length) return out;
+
+  const available=(gid)=>{
+    const all=p.filter(x=>x.g===gid&&!used.has(x.n));
+    const fresh=all.filter(x=>!recent.has(x.n));
+    return fresh.length?fresh:all;
+  };
+
+  let last=null;
+  for(let i=0;i<count;i++){
+    let cands=live.filter(g=>g.id!==last);
+    if(!cands.length) cands=live;
+    let pick=null;
+    for(let t=0;t<40&&!pick;t++){
+      const total=cands.reduce((a,g)=>a+liveWeight(g.id),0);
+      let r=Math.random()*total,g=cands[0];
+      for(const c of cands){ r-=liveWeight(c.id); if(r<=0){g=c;break;} }
+      const avail=available(g.id);
+      if(avail.length){ pick=rand(avail); last=g.id; }
+    }
+    if(!pick){
+      const avail=p.filter(x=>!used.has(x.n)&&S.pri[x.g]>0);
+      if(!avail.length) break;
+      pick=rand(avail); last=pick.g;
+    }
+    used.add(pick.n); out.push(pick);
+  }
+  return bonePass(out,used);
+}
+
+/* Bone loading. The evidence for women through the menopause transition points
+   at impact plus loaded resistance work two to three times a week, and walking
+   supplies neither. If the week is short, swap a slot for something that does. */
+function bonePass(set,used){
+  const w=weekStats();
+  const has=t=>set.some(x=>x.b===t);
+  const p=pool();
+  const swapIn=(type)=>{
+    const cands=p.filter(x=>x.b===type&&!used.has(x.n)&&S.pri[x.g]>0);
+    if(!cands.length) return;
+    // replace the slot whose group is best represented elsewhere in the set
+    const counts={};
+    set.forEach(x=>counts[x.g]=(counts[x.g]||0)+1);
+    let idx=-1,best=0;
+    set.forEach((x,i)=>{ if(!x.b&&counts[x.g]>=best){best=counts[x.g];idx=i;} });
+    if(idx<0) return;
+    const pick=rand(cands);
+    used.delete(set[idx].n); used.add(pick.n); set[idx]=pick;
+  };
+  if(w.impact<2 && !has("impact")) swapIn("impact");
+  if(w.bone<2 && !has("load") && (S.db||S.band)) swapIn("load");
+  return set;
+}
+
+function sample(arr,n){
+  const c=arr.slice();
+  for(let i=c.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c[i],c[j]]=[c[j],c[i]];}
+  return c.slice(0,Math.min(n,c.length));
+}
+
+/* ===================== workout builders ===================== */
+function buildStrength(){
+  const target=S.minutes*60, iv=S.work+S.rest, C=S.perCircuit;
+  let warmN=clamp(Math.round(target*0.10/30),3,8);
+  let coolN=clamp(Math.round(target*0.10/30),3,8);
+  const breakExtra=20;
+
+  let block=target-(warmN+coolN)*30;
+  let rounds=Math.max(2,Math.round(block/(C*iv)));
+  let circuits=rounds>5?2:1;
+  let per=circuits===2?Math.max(2,Math.round(rounds/2)):rounds;
+
+  // trim or pad the cool-down so the total lands close to what was asked for
+  const workTime=()=>circuits*per*C*iv+(circuits*per-1)*breakExtra;
+  let coolAdj=Math.round((target-warmN*30-workTime())/30);
+  coolN=clamp(coolAdj,2,10);
+
+  const warm=sample(WARMUP,warmN), cool=sample(COOLDOWN,coolN);
+  const sets=[];
+  for(let c=0;c<circuits;c++) sets.push(pickSet(C));
+  if(!sets[0].length) return null;
+
+  const segs=[];
+  warm.forEach(w=>segs.push({t:"warmup",n:w.n,c:w.c,d:30}));
+  let roundNo=0;
+  const totalRounds=circuits*per;
+  for(let c=0;c<circuits;c++){
+    for(let r=0;r<per;r++){
+      roundNo++;
+      const lastRound=roundNo===totalRounds;
+      sets[c].forEach((ex,i)=>{
+        const lastEx=i===sets[c].length-1;
+        segs.push({t:"work",n:ex.n,c:ex.c,d:S.work,g:ex.g,b:ex.b,round:roundNo,rounds:totalRounds,
+                   circuit:circuits>1?String.fromCharCode(65+c):null});
+        if(lastRound&&lastEx) return;
+        segs.push({t:lastEx?"break":"rest",n:lastEx?"Round break":"Rest",c:"",
+                   d:S.rest+(lastEx?breakExtra:0),round:roundNo,rounds:totalRounds});
+      });
+    }
+  }
+  cool.forEach(c=>segs.push({t:"cooldown",n:c.n,c:c.c,d:30}));
+
+  return {segs,shape:circuits>1
+    ? "Two circuits of "+C+", "+per+" rounds each"
+    : "Circuit of "+C+", "+per+" rounds",
+    sets,warm,cool,circuits,per};
+}
+
+function buildFlex(){
+  const target=S.minutes*60, trans=10, iv=S.hold+trans;
+  const openers=sample(WARMUP.filter(w=>/Cat-cow|Arm circles|Hip circles|Shoulder rolls|Torso twist|Ankle rolls/.test(w.n)),3);
+  let slots=Math.max(4,Math.round((target-openers.length*30)/iv));
+
+  // spread across standing, floor, seated, lying in that order
+  const want={1:0.28,2:0.34,3:0.18,4:0.20};
+  const chosen=[];
+  for(const ord of [1,2,3,4]){
+    const n=Math.max(1,Math.round(slots*want[ord]));
+    const avail=STRETCH.concat(myStretch()).filter(s=>s.ord===ord);
+    for(const s of sample(avail,n)) chosen.push(s);
+  }
+
+  const segs=[];
+  openers.forEach(o=>segs.push({t:"warmup",n:o.n,c:o.c,d:30}));
+  let count=0;
+  for(const s of chosen){
+    const sides=s.s?["Left","Right"]:[null];
+    for(const side of sides){
+      if(count>=slots) break;
+      segs.push({t:"hold",n:side?s.n+" · "+side:s.n,c:s.c,d:S.hold});
+      segs.push({t:"rest",n:"Change over",c:"",d:trans});
+      count++;
+    }
+    if(count>=slots) break;
+  }
+  if(segs.length&&segs[segs.length-1].t==="rest") segs.pop();
+  segs.push({t:"cooldown",n:"Lie still",c:"Let everything go, slow breaths"  ,d:60});
+
+  return {segs,shape:"Full body, "+count+" stretches held for "+S.hold+"s",chosen,openers};
+}
+
+let W=null;
+function build(){
+  W = S.mode==="flex" ? buildFlex() : buildStrength();
+  return W;
+}
+
+/* ===================== setup UI ===================== */
+function renderPri(){
+  const box=$("pri");
+  box.innerHTML="";
+  GROUPS.forEach(g=>{
+    const row=document.createElement("div");
+    row.className="pri-row";
+    const nm=document.createElement("span");
+    nm.className="nm"; nm.textContent=g.name;
+    const seg=document.createElement("div");
+    seg.className="seg"; seg.setAttribute("role","group");
+    seg.setAttribute("aria-label",g.name+" priority");
+    PRI_LABELS.forEach((lbl,v)=>{
+      const b=document.createElement("button");
+      b.textContent=lbl;
+      b.setAttribute("aria-pressed",String(S.pri[g.id]===v));
+      b.addEventListener("click",()=>{
+        S.pri[g.id]=v; save();
+        [...seg.children].forEach((c,ci)=>c.setAttribute("aria-pressed",String(ci===v)));
+        refresh();
+      });
+      seg.appendChild(b);
+    });
+    row.append(nm,seg); box.appendChild(row);
+  });
+}
+
+function renderPreview(){
+  if(!W){ $("p-time").textContent="No exercises"; $("p-shape").textContent="Turn a muscle group back on"; $("p-list").innerHTML=""; return; }
+  const total=W.segs.reduce((s,x)=>s+x.d,0);
+  $("p-time").textContent=Math.round(total/60)+" min";
+  $("p-shape").textContent=W.shape;
+
+  const list=$("p-list"); list.innerHTML="";
+  const sect=(txt,cls)=>{const li=document.createElement("li");li.className="sect "+cls;li.textContent=txt;list.appendChild(li);};
+  const item=(i,name,tag)=>{
+    const li=document.createElement("li");
+    li.innerHTML='<span class="ix"></span><span class="nm"></span><span class="tg"></span>';
+    li.children[0].textContent=i; li.children[1].textContent=name; li.children[2].textContent=tag||"";
+    list.appendChild(li);
+  };
+
+  if(S.mode==="flex"){
+    sect("Opening mobility","w");
+    W.openers.forEach((o,i)=>item(i+1,o.n,"30s"));
+    sect("Stretches","m");
+    let n=0;
+    W.segs.filter(s=>s.t==="hold").forEach(s=>item(++n,s.n,S.hold+"s"));
+  }else{
+    sect("Warm-up","w");
+    W.warm.forEach((w,i)=>item(i+1,w.n,"30s"));
+    W.sets.forEach((set,ci)=>{
+      sect(W.circuits>1?("Circuit "+String.fromCharCode(65+ci)+" · "+W.per+" rounds"):("The circuit · "+W.per+" rounds"),"m");
+      set.forEach((ex,i)=>{
+        const g=GROUPS.find(g=>g.id===ex.g);
+        item(i+1,ex.n,g?g.name:"");
+      });
+    });
+    sect("Cool-down","c");
+    W.cool.forEach((c,i)=>item(i+1,c.n,"30s"));
+  }
+}
+
+function joinList(a){
+  if(a.length===0) return "";
+  if(a.length===1) return a[0];
+  return a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+}
+
+function renderWeek(){
+  const w=weekStats();
+  const days=$("w-days"), bone=$("w-bone");
+  days.textContent=w.days+" of 2";
+  bone.textContent=w.bone+" of 2";
+  days.classList.toggle("met",w.days>=2);
+  bone.classList.toggle("met",w.bone>=2);
+
+  const box=$("w-chips"); box.innerHTML="";
+  const resting=[],untrained=[];
+  GROUPS.forEach(g=>{
+    const el=document.createElement("span");
+    el.className="chip-g";
+    const h=groupRested(g.id);
+    const trained=w.groups[g.id]>0;
+    if(h!==null&&h<48){ el.classList.add("rest"); resting.push(g.name.toLowerCase()); }
+    else if(trained) el.classList.add("on");
+    else if(S.pri[g.id]>0) untrained.push(g.name.toLowerCase());
+    el.textContent=g.name;
+    box.appendChild(el);
+  });
+
+  const bits=[];
+  if(resting.length) bits.push("Resting for now: "+joinList(resting)+".");
+  if(untrained.length) bits.push("Not trained yet this week: "+joinList(untrained)+".");
+  if(w.days>=2&&w.bone>=2&&!untrained.length) bits.push("You have covered the week. Anything else is a bonus.");
+  if(!S.log.length) bits.push("Nothing logged yet. Finish a workout and this fills in.");
+  $("w-note").textContent=bits.join(" ");
+}
+
+function refresh(){ build(); renderPreview(); renderWeek(); }
+
+function setMode(m){
+  S.mode=m; save();
+  [...$("mode").children].forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m)));
+  $("mode").classList.toggle("flexmode",m==="flex");
+  document.body.classList.toggle("flexmode-on",m==="flex");
+  $("strength-only").hidden = m==="flex";
+  $("flex-only").hidden = m!=="flex";
+  refresh();
+}
+
+function wireSteppers(){
+  document.querySelectorAll("[data-step]").forEach(el=>{
+    const key=el.dataset.step,[lo,hi,inc]=LIMITS[key];
+    el.querySelectorAll("button").forEach(b=>{
+      b.addEventListener("click",()=>{
+        S[key]=clamp(S[key]+Number(b.dataset.d)*inc,lo,hi);
+        $("v-"+key).textContent=S[key]; save(); refresh();
+      });
+    });
+  });
+}
+function wireSeg(id,key,cast){
+  const box=$(id);
+  box.querySelectorAll("button").forEach(b=>{
+    b.addEventListener("click",()=>{
+      S[key]=cast(b.dataset.v); save();
+      box.querySelectorAll("button").forEach(o=>o.setAttribute("aria-pressed",String(o===b)));
+      refresh();
+    });
+  });
+}
+function wireToggles(){
+  document.querySelectorAll("[data-tog]").forEach(b=>{
+    const k=b.dataset.tog;
+    b.setAttribute("aria-pressed",String(!!S[k]));
+    b.addEventListener("click",()=>{
+      S[k]=!S[k]; save(); b.setAttribute("aria-pressed",String(S[k])); refresh();
+    });
+  });
+}
+
+function initSetup(){
+  ["minutes","work","rest"].forEach(k=>$("v-"+k).textContent=S[k]);
+  $("percircuit").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(Number(b.dataset.v)===S.perCircuit)));
+  $("hold").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(Number(b.dataset.v)===S.hold)));
+  renderPri(); wireSteppers(); wireToggles();
+  wireSeg("percircuit","perCircuit",Number);
+  wireSeg("hold","hold",Number);
+  [...$("mode").children].forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+  $("shuffle").addEventListener("click",refresh);
+  initMine();
+  renderWeek();
+  setMode(S.mode);
+}
+
+
+/* ===================== calories =====================
+   MET values from the Compendium of Physical Activities: vigorous calisthenics
+   and circuit work sit around 8, resistance work around 6, stretching around
+   2.5. kcal/min = MET x 3.5 x kg / 200. This is an estimate from your body
+   weight and the clock, not a measurement. */
+function metFor(seg){
+  if(seg.t==="warmup") return 3.5;
+  if(seg.t==="rest"||seg.t==="break") return 2.0;
+  if(seg.t==="cooldown"||seg.t==="hold") return 2.5;
+  if(seg.t==="work") return seg.g==="cardio" ? 8.5 : 6.0;
+  return 2.0;
+}
+function kcalFor(segs){
+  if(!S.kg) return 0;
+  let k=0;
+  segs.forEach(x=>{ k += metFor(x)*3.5*S.kg/200*(x.d/60); });
+  return Math.round(k);
+}
+
+/* ===================== sound ===================== */
+let AC=null;
+function audio(){
+  if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if(AC&&AC.state==="suspended") AC.resume();
+  return AC;
+}
+function beep(freq,ms,vol){
+  if(!S.beeps) return;
+  const ac=audio(); if(!ac) return;
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type="sine"; o.frequency.value=freq;
+  g.gain.setValueAtTime(vol||0.18,ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+ms/1000);
+  o.connect(g); g.connect(ac.destination);
+  o.start(); o.stop(ac.currentTime+ms/1000);
+}
+function say(text){
+  if(!S.voice||!("speechSynthesis" in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.rate=1.02; u.pitch=1;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ===================== player ===================== */
+const ARC=867.08;
+
+/* One mark per exercise, grouped into rounds, so you can see how far through
+   the round you are and how many rounds are left. */
+function buildPips(){
+  const box=$("pips"); box.innerHTML=""; P.pips=[];
+  const items=[];
+  P.segs.forEach((seg,i)=>{
+    if(seg.t==="rest"||seg.t==="break") return;
+    const key = seg.t==="warmup" ? "w" : seg.t==="cooldown" ? "c" : ("r"+(seg.round||1));
+    items.push({i,t:seg.t,key});
+  });
+  const n=items.length;
+  if(!n) return;
+  let breaks=0;
+  for(let k=1;k<n;k++) if(items[k].key!==items[k-1].key) breaks++;
+  const PIP_GAP=0.5, ROUND_GAP=2.2;                    // percent of the bar
+  const gaps=(n-1-breaks)*PIP_GAP + breaks*ROUND_GAP;
+  const w=Math.max(0.4,(100-gaps)/n);
+  let x=0;
+  items.forEach((it,k)=>{
+    if(k>0) x += (it.key!==items[k-1].key ? ROUND_GAP : PIP_GAP);
+    const pip=document.createElement("i");
+    pip.className="pip"; pip.dataset.t=it.t; pip.dataset.i=it.i;
+    pip.style.left=x.toFixed(3)+"%";
+    pip.style.width=w.toFixed(3)+"%";
+    box.appendChild(pip); P.pips.push(pip);
+    x += w;
+  });
+}
+function paintPips(){
+  P.pips.forEach(pip=>{
+    const i=Number(pip.dataset.i);
+    pip.classList.toggle("done",i<P.i);
+    pip.classList.toggle("now",i===P.i);
+  });
+}
+const ACCENT={warmup:"var(--warmup)",work:"var(--work)",hold:"var(--flex)",
+              rest:"var(--rest)",break:"var(--rest)",cooldown:"var(--cooldown)"};
+const CHIP={warmup:"Warm-up",work:"Work",hold:"Hold",rest:"Rest",break:"Round break",cooldown:"Cool-down"};
+
+let P={segs:[],i:0,endAt:0,left:0,paused:true,raf:null,total:0,elapsedBefore:0,lastTick:null,done:0,pips:[]};
+
+function startWorkout(){
+  if(!W||!W.segs.length) return;
+  audio();
+  P.segs=W.segs; P.i=0; P.paused=false; P.done=0;
+  P.total=P.segs.reduce((s,x)=>s+x.d,0);
+  P.elapsedBefore=0;
+  $("setup").hidden=true; $("donescreen").hidden=true; $("player").hidden=false;
+  buildPips();
+  try{ window.scrollTo(0,0); }catch(e){}
+  lockScreen();
+  enter(0);
+  if(!P.raf) P.raf=requestAnimationFrame(tick);
+}
+
+function enter(i){
+  P.i=i;
+  const s=P.segs[i];
+  P.elapsedBefore=P.segs.slice(0,i).reduce((a,x)=>a+x.d,0);
+  P.left=s.d;
+  P.endAt=performance.now()+s.d*1000;
+  P.lastTick=null;
+
+  const pl=$("player");
+  pl.style.setProperty("--accent",ACCENT[s.t]||"var(--work)");
+  $("chip").textContent=CHIP[s.t]||"";
+  $("rnd").textContent = s.round ? ((s.circuit?"Circuit "+s.circuit+" · ":"")+"Round "+s.round+" of "+s.rounds) : "";
+  $("now").textContent=s.n;
+  $("cue").textContent=s.c||"";
+  const nxt=P.segs.slice(i+1).find(x=>x.t==="work"||x.t==="hold"||x.t==="warmup"||x.t==="cooldown");
+  $("next").innerHTML = nxt ? ("Next up <b></b>") : "Last one";
+  if(nxt) $("next").querySelector("b").textContent=nxt.n;
+
+  paintPips();
+  if(!P.paused) lockScreen();   // iOS drops the lock quietly, so take it back
+
+  if(s.t==="work"||s.t==="hold"||s.t==="warmup"||s.t==="cooldown"){
+    beep(1180,150); setTimeout(()=>beep(1180,150),170);
+    say(s.n);
+    P.done++;
+  }else{
+    beep(560,220);
+    if(nxt) say("Rest. Next, "+nxt.n);
+  }
+  paint(s.d,s.d);
+}
+
+function paint(left,dur){
+  const secs=Math.max(0,Math.ceil(left));
+  const el=$("count");
+  el.textContent = secs>=100 ? Math.floor(secs/60)+":"+String(secs%60).padStart(2,"0") : secs;
+  el.classList.toggle("sm",secs>=100);
+  $("arc").style.strokeDashoffset = ARC*(1-Math.max(0,left)/dur);
+}
+
+function tick(){
+  P.raf=requestAnimationFrame(tick);
+  if(P.paused) return;
+  const s=P.segs[P.i];
+  const left=(P.endAt-performance.now())/1000;
+  const whole=Math.ceil(left);
+  if(P.lastTick!==null&&whole!==P.lastTick&&whole>=1&&whole<=3) beep(880,110,0.14);
+  P.lastTick=whole;
+  paint(left,s.d);
+  if(left<=0) advance(1);
+}
+
+function advance(dir){
+  const n=P.i+dir;
+  if(n<0) return;
+  if(n>=P.segs.length){ finish(); return; }
+  enter(n);
+}
+
+function recordSession(){
+  if(P.done<3) return;                       // too short to count as a session
+  const worked=P.segs.slice(0,P.i+1);
+  const names=[...new Set(worked.filter(x=>x.t==="work"||x.t==="hold").map(x=>x.n))];
+  const groups={};
+  let impact=false,load=false;
+  if(W&&W.sets){
+    W.sets.forEach(set=>set.forEach(x=>{
+      if(!names.includes(x.n)) return;
+      groups[x.g]=(groups[x.g]||0)+1;
+      if(x.b==="impact") impact=true;
+      if(x.b==="load") load=true;
+    }));
+  }
+  logSession({t:Date.now(),mode:S.mode,groups,ex:names,impact,load,
+              mins:Math.round(P.elapsedBefore/60)});
+  renderWeek();
+}
+
+function finish(){
+  P.paused=true;
+  P.elapsedBefore=P.total;
+  recordSession();
+  releaseScreen();
+  beep(660,180); setTimeout(()=>beep(880,180),200); setTimeout(()=>beep(1180,320),400);
+  say("Workout complete");
+  $("d-time").textContent=Math.round(P.total/60);
+  $("d-count").textContent=P.done;
+  const kcal=kcalFor(P.segs);
+  $("d-kcal-box").hidden=!kcal;
+  $("d-kcal").textContent=kcal;
+  $("d-note").textContent = kcal
+    ? "Calories are estimated from your weight and the clock, not measured. Treat it as a rough number."
+    : "Add your weight on the home screen and the app will estimate calories.";
+  $("player").hidden=true; $("donescreen").hidden=false;
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+
+function togglePause(){
+  P.paused=!P.paused;
+  const pl=$("player");
+  pl.classList.toggle("paused",P.paused);
+  $("pp").setAttribute("aria-label",P.paused?"Resume":"Pause");
+  $("ppicon").innerHTML = P.paused
+    ? '<path d="M7 4.5v15l13-7.5z"></path>'
+    : '<rect x="5" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="14.5" y="4" width="4.5" height="16" rx="1.2"></rect>';
+  if(P.paused){ P.left=(P.endAt-performance.now())/1000; releaseScreen(); }
+  else { P.endAt=performance.now()+P.left*1000; lockScreen(); }
+}
+
+function quit(){
+  P.paused=true;
+  recordSession();
+  releaseScreen();
+  try{ speechSynthesis.cancel(); }catch(e){}
+  $("player").hidden=true; $("setup").hidden=false;
+}
+
+/* keep the screen on while a workout is running */
+let WL=null;
+async function lockScreen(){
+  if(WL) return;
+  try{
+    if("wakeLock" in navigator){
+      WL=await navigator.wakeLock.request("screen");
+      WL.addEventListener("release",()=>{ WL=null; });
+    }
+  }catch(e){ WL=null; }
+}
+function releaseScreen(){ try{ if(WL){WL.release(); WL=null;} }catch(e){} }
+$("player").addEventListener("touchstart",()=>{ if(!P.paused) lockScreen(); },{passive:true});
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"&&!P.paused&&!$("player").hidden) lockScreen();
+});
+
+/* ===================== wiring ===================== */
+$("start").addEventListener("click",startWorkout);
+$("pp").addEventListener("click",togglePause);
+$("skip").addEventListener("click",()=>advance(1));
+$("back").addEventListener("click",()=>advance(-1));
+$("quit").addEventListener("click",quit);
+$("home").addEventListener("click",()=>{ refresh(); $("donescreen").hidden=true; $("setup").hidden=false; });
+
+/* ---------- your own exercises ---------- */
+let CX={kind:"strength",equip:"bw",sides:true};
+
+function renderMine(){
+  const list=$("mine-list"); list.innerHTML="";
+  const n=S.custom.length;
+  $("mine-count").textContent = n===0 ? "None added yet"
+    : n+(n===1?" exercise added":" exercises added");
+  S.custom.forEach((x,i)=>{
+    const li=document.createElement("li");
+    const left=document.createElement("div");
+    const nm=document.createElement("span"); nm.className="mn"; nm.textContent=x.n;
+    const meta=document.createElement("span"); meta.className="mm";
+    if(x.kind==="strength"){
+      const g=GROUPS.find(g=>g.id===x.g);
+      const kit={bw:"no kit",db:"dumbbells",bd:"band or mat"}[x.e];
+      meta.textContent=(g?g.name:"")+" · "+kit;
+    }else{
+      const pos={1:"Standing",2:"Floor",3:"Seated",4:"Lying"}[x.ord];
+      meta.textContent="Stretch · "+pos+(x.s?" · both sides":"");
+    }
+    left.append(nm,meta);
+    const del=document.createElement("button");
+    del.className="del"; del.textContent="\u00d7";
+    del.setAttribute("aria-label","Remove "+x.n);
+    del.addEventListener("click",()=>{ S.custom.splice(i,1); save(); renderMine(); refresh(); });
+    li.append(left,del); list.appendChild(li);
+  });
+}
+
+function setKind(k){
+  CX.kind=k;
+  [...$("cx-kind").children].forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===k)));
+  $("cx-s-fields").hidden = k!=="strength";
+  $("cx-f-fields").hidden = k!=="stretch";
+  $("cx-f-fields").style.display = k==="stretch" ? "flex" : "";
+  $("cx-name").placeholder = k==="stretch"
+    ? "Name, e.g. Hero pose" : "Name, e.g. Hollow body crunch";
+}
+
+function addMine(){
+  const name=$("cx-name").value.trim();
+  if(!name){ $("cx-name").focus(); return; }
+  const cue=$("cx-cue").value.trim();
+  const item = CX.kind==="strength"
+    ? {kind:"strength",n:name,g:$("cx-group").value,e:CX.equip,c:cue}
+    : {kind:"stretch",n:name,ord:Number($("cx-pos").value),s:CX.sides,c:cue};
+  S.custom.push(item); save();
+  $("cx-name").value=""; $("cx-cue").value="";
+  renderMine(); refresh();
+}
+
+function initMine(){
+  const sel=$("cx-group");
+  GROUPS.forEach(g=>{
+    const o=document.createElement("option");
+    o.value=g.id; o.textContent=g.name; sel.appendChild(o);
+  });
+  sel.value="core";
+
+  $("mine-toggle").addEventListener("click",()=>{
+    const f=$("mine-form"); f.hidden=!f.hidden;
+    $("mine-toggle").textContent=f.hidden?"Add one":"Close";
+    if(!f.hidden) $("cx-name").focus();
+  });
+  [...$("cx-kind").children].forEach(b=>b.addEventListener("click",()=>setKind(b.dataset.v)));
+  [...$("cx-equip").children].forEach(b=>b.addEventListener("click",()=>{
+    CX.equip=b.dataset.v;
+    [...$("cx-equip").children].forEach(o=>o.setAttribute("aria-pressed",String(o===b)));
+  }));
+  $("cx-sides").addEventListener("click",()=>{
+    CX.sides=!CX.sides; $("cx-sides").setAttribute("aria-pressed",String(CX.sides));
+  });
+  const kg=$("cx-kg");
+  if(S.kg) kg.value=S.kg;
+  kg.addEventListener("change",()=>{
+    const v=Number(kg.value);
+    S.kg=(v>=30&&v<=200)?Math.round(v):0;
+    if(!S.kg) kg.value="";
+    save();
+  });
+  $("cx-add").addEventListener("click",addMine);
+  $("cx-name").addEventListener("keydown",e=>{ if(e.key==="Enter") addMine(); });
+  $("cx-cue").addEventListener("keydown",e=>{ if(e.key==="Enter") addMine(); });
+  setKind("strength");
+  renderMine();
+}
+
+initSetup();
+</script>
+</body>
+</html>
