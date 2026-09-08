@@ -37,6 +37,15 @@
   --r:14px;
 }
 *{box-sizing:border-box}
+html{overscroll-behavior:none}
+/* A near miss on Back or Skip used to double-tap-zoom, select text, or drag
+   the page. None of those are wanted mid-workout. */
+.play,.done{
+  touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;
+  overscroll-behavior:none;
+}
+button,a,.pip{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 body{
   margin:0;
   background:var(--ink);
@@ -168,6 +177,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--work);outl
   background:var(--surface2);border:1px solid var(--line);color:var(--text);
 }
 .fld::placeholder{color:var(--dim)}
+.fldlab{font-size:13px;color:var(--muted);margin-bottom:-4px}
 select.fld{appearance:none;-webkit-appearance:none}
 .addbtn{
   padding:14px;border-radius:10px;background:var(--work);color:#191106;
@@ -292,7 +302,19 @@ select.fld{appearance:none;-webkit-appearance:none}
 <style>
   html,body{background:#0C1016}
   .app{padding-top:env(safe-area-inset-top)}
+  /* Installed on the Home Screen the page runs under the clock and battery.
+     env() alone is not dependable there, so a real floor is enforced. */
+  html.standalone .app{padding-top:max(env(safe-area-inset-top),52px)}
+  @media all and (display-mode:standalone){
+    .app{padding-top:max(env(safe-area-inset-top),52px)}
+  }
 </style>
+<script>
+  if(window.navigator.standalone===true||
+     (window.matchMedia&&matchMedia("(display-mode: standalone)").matches)){
+    document.documentElement.classList.add("standalone");
+  }
+</script>
 </head>
 <body>
 <div class="app">
@@ -432,11 +454,12 @@ select.fld{appearance:none;-webkit-appearance:none}
     </div>
 
     <div class="block">
-      <span class="lab">Calorie estimate</span>
+      <span class="lab">Your weight</span>
       <div class="mine">
         <div class="mine-form" style="border-top:0">
+          <label class="fldlab" for="cx-kg">Weight in kilograms</label>
           <input class="fld" id="cx-kg" type="number" inputmode="numeric"
-                 min="30" max="200" placeholder="Your weight in kg (optional)">
+                 min="30" max="200" placeholder="e.g. 68">
           <p class="weeknote" style="padding:0">Only used to estimate calories, and only
              stored on this phone. Leave it blank and the app skips the estimate.</p>
         </div>
@@ -564,7 +587,7 @@ const EX=[
 {n:"Air squat",g:"legs",e:"bw",c:"Chest up, weight in the heels",d:2},
 {n:"Reverse lunge",g:"legs",e:"bw",c:"Step back, back knee to the floor"},
 {n:"Forward lunge",g:"legs",e:"bw",c:"Long step, front knee over the ankle"},
-{n:"Split squat",g:"legs",e:"bw",c:"Back foot on a chair, drop straight down"},
+{n:"Split squat",g:"legs",e:"bw",c:"Back foot on a chair, drop straight down",u:1},
 {n:"Wall sit",g:"legs",e:"bw",c:"Thighs level, back flat to the wall"},
 {n:"Squat pulse",g:"legs",e:"bw",c:"Hold the bottom, small pulses"},
 {n:"Curtsy lunge",g:"legs",e:"bw",c:"Cross the back leg behind, hips square"},
@@ -573,7 +596,7 @@ const EX=[
 {n:"Sumo squat",g:"legs",e:"bw",c:"Toes out, knees track the toes"},
 {n:"Goblet squat",g:"legs",e:"db",c:"Dumbbell at the chest, elbows inside the knees",b:"load"},
 {n:"Dumbbell lunge",g:"legs",e:"db",c:"Weights by your sides, tall through the chest",b:"load"},
-{n:"Dumbbell step-up",g:"legs",e:"db",c:"Drive through the top foot, control the way down",b:"load"},
+{n:"Dumbbell step-up",g:"legs",e:"db",c:"Drive through the top foot, control the way down",b:"load",u:1},
 {n:"Romanian deadlift",g:"legs",e:"db",c:"Hinge at the hips, soft knees, flat back",b:"load"},
 {n:"Dumbbell sumo squat",g:"legs",e:"db",c:"One weight between the legs, wide stance",b:"load"},
 {n:"Dumbbell front squat",g:"legs",e:"db",c:"Weights at the shoulders, elbows high",b:"load"},
@@ -582,23 +605,23 @@ const EX=[
 {n:"Monster walk",g:"legs",e:"bd",c:"Band at the ankles, step forward and out"},
 /* glutes */
 {n:"Glute bridge",g:"glutes",e:"bw",c:"Squeeze at the top, ribs down"},
-{n:"Single-leg glute bridge",g:"glutes",e:"bw",c:"One foot up, hips level"},
-{n:"Donkey kick",g:"glutes",e:"bw",c:"On all fours, heel to the ceiling"},
-{n:"Fire hydrant",g:"glutes",e:"bw",c:"Knee out to the side, back still"},
+{n:"Single-leg glute bridge",g:"glutes",e:"bw",c:"One foot up, hips level",u:1},
+{n:"Donkey kick",g:"glutes",e:"bw",c:"On all fours, heel to the ceiling",u:1},
+{n:"Fire hydrant",g:"glutes",e:"bw",c:"Knee out to the side, back still",u:1},
 {n:"Frog pump",g:"glutes",e:"bw",c:"Soles together, drive the hips up"},
 {n:"Hip thrust",g:"glutes",e:"bw",c:"Shoulders on the sofa, chin tucked"},
 {n:"Bridge pulse",g:"glutes",e:"bw",c:"Hold at the top, small pulses"},
-{n:"Kneeling kickback",g:"glutes",e:"bw",c:"Straight leg back, no arch in the low back"},
+{n:"Kneeling kickback",g:"glutes",e:"bw",c:"Straight leg back, no arch in the low back",u:1},
 {n:"Dumbbell hip thrust",g:"glutes",e:"db",c:"Weight across the hips, full lockout",b:"load"},
 {n:"Weighted glute bridge",g:"glutes",e:"db",c:"Weight on the hips, pause at the top",b:"load"},
-{n:"Single-leg deadlift",g:"glutes",e:"db",c:"Hinge forward, back leg long behind",b:"load"},
+{n:"Single-leg deadlift",g:"glutes",e:"db",c:"Hinge forward, back leg long behind",b:"load",u:1},
 {n:"Banded glute bridge",g:"glutes",e:"bd",c:"Band above the knees, press out as you rise"},
-{n:"Clamshell",g:"glutes",e:"bd",c:"On your side, feet together, knee opens"},
-{n:"Banded kickback",g:"glutes",e:"bd",c:"Push against the band, slow return"},
-{n:"Banded fire hydrant",g:"glutes",e:"bd",c:"Knee out against the band, hips square"},
+{n:"Clamshell",g:"glutes",e:"bd",c:"On your side, feet together, knee opens",u:1},
+{n:"Banded kickback",g:"glutes",e:"bd",c:"Push against the band, slow return",u:1},
+{n:"Banded fire hydrant",g:"glutes",e:"bd",c:"Knee out against the band, hips square",u:1},
 /* core */
 {n:"Forearm plank",g:"core",e:"bw",c:"Straight line, squeeze the glutes"},
-{n:"Side plank",g:"core",e:"bw",c:"Hips stacked and lifted"},
+{n:"Side plank",g:"core",e:"bw",c:"Hips stacked and lifted",u:1},
 {n:"Bird dog",g:"core",e:"bw",c:"Opposite arm and leg, keep the hips level"},
 {n:"Dead bug",g:"core",e:"bw",c:"Low back pressed into the floor"},
 {n:"Plank shoulder tap",g:"core",e:"bw",c:"Wide feet, stop the hips rocking"},
@@ -606,10 +629,10 @@ const EX=[
 {n:"Superman",g:"core",e:"bw",c:"Lift chest and thighs, look at the floor"},
 {n:"Plank up-down",g:"core",e:"bw",c:"Forearms to hands and back, minimal sway"},
 {n:"High plank hold",g:"core",e:"bw",c:"Hands under the shoulders, ribs down"},
-{n:"Side plank dip",g:"core",e:"bw",c:"Hip to the floor, then drive it up"},
+{n:"Side plank dip",g:"core",e:"bw",c:"Hip to the floor, then drive it up",u:1},
 {n:"Bear hold",g:"core",e:"bw",c:"Knees an inch off the floor, flat back"},
 {n:"Renegade row",g:"core",e:"db",c:"Plank on the weights, row without twisting"},
-{n:"Suitcase hold",g:"core",e:"db",c:"One heavy weight, stay upright"},
+{n:"Suitcase hold",g:"core",e:"db",c:"One heavy weight, stay upright",u:1},
 {n:"Overhead carry hold",g:"core",e:"db",c:"Weight locked out above, ribs pulled down"},
 {n:"Banded dead bug",g:"core",e:"bd",c:"Band overhead, pull down as the leg extends"},
 {n:"Pallof press",g:"core",e:"bd",c:"Press straight out, resist the twist"},
@@ -628,8 +651,8 @@ const EX=[
 {n:"Cross jackknife",g:"abs",e:"bw",c:"One arm to the opposite leg, alternate"},
 {n:"Weighted Russian twist",g:"abs",e:"db",c:"Weight at the chest, twist slowly"},
 {n:"Weighted sit-up",g:"abs",e:"db",c:"Weight on the chest, controlled all the way"},
-{n:"Woodchop",g:"abs",e:"db",c:"Hip to opposite shoulder, pivot the back foot"},
-{n:"Dumbbell side bend",g:"abs",e:"db",c:"One weight, bend straight down the side"},
+{n:"Woodchop",g:"abs",e:"db",c:"Hip to opposite shoulder, pivot the back foot",u:1},
+{n:"Dumbbell side bend",g:"abs",e:"db",c:"One weight, bend straight down the side",u:1},
 /* upper */
 {n:"Push-up",g:"upper",e:"bw",c:"Elbows back at 45 degrees, body in a line"},
 {n:"Incline push-up",g:"upper",e:"bw",c:"Hands on the sofa or a chair"},
@@ -690,20 +713,20 @@ const EX=[
 {n:"Sumo deadlift",g:"legs",e:"db",c:"Wide stance, one weight between the feet",b:"load"},
 {n:"Banded deadlift",g:"legs",e:"bd",c:"Stand on the band, hinge and stand tall",b:"load"},
 /* glutes */
-{n:"Banded hip abduction",g:"glutes",e:"bd",c:"On your side, band at the knees, lift and lower"},
-{n:"Curtsy pulse",g:"glutes",e:"bw",c:"Hold the curtsy low, small pulses"},
+{n:"Banded hip abduction",g:"glutes",e:"bd",c:"On your side, band at the knees, lift and lower",u:1},
+{n:"Curtsy pulse",g:"glutes",e:"bw",c:"Hold the curtsy low, small pulses",u:1},
 /* core and abs */
 {n:"Hollow body crunch",g:"core",e:"bw",c:"Arms overhead and legs low, close them together and open slowly"},
 {n:"Hollow rock",g:"core",e:"bw",c:"Hold the hollow shape and rock from the shoulders"},
 {n:"Plank reach",g:"core",e:"bw",c:"Forearm plank, reach one arm forward"},
 {n:"Straight-leg sit-up",g:"abs",e:"bw",c:"Legs long, reach past the toes"},
 /* arms and shoulders */
-{n:"Single-arm tricep extension",g:"upper",e:"db",c:"One weight behind the head, elbow points at the ceiling"},
+{n:"Single-arm tricep extension",g:"upper",e:"db",c:"One weight behind the head, elbow points at the ceiling",u:1},
 {n:"Skull crusher",g:"upper",e:"db",c:"On your back, lower to the forehead, elbows still"},
-{n:"Concentration curl",g:"upper",e:"db",c:"Elbow braced on the thigh, slow all the way down"},
+{n:"Concentration curl",g:"upper",e:"db",c:"Elbow braced on the thigh, slow all the way down",u:1},
 {n:"Cross-body hammer curl",g:"upper",e:"db",c:"Curl across towards the opposite shoulder"},
 {n:"Drag curl",g:"upper",e:"db",c:"Drag the weights up the body, elbows pull back"},
-{n:"Single-arm row",g:"upper",e:"db",c:"One hand braced, pull the elbow to the hip"},
+{n:"Single-arm row",g:"upper",e:"db",c:"One hand braced, pull the elbow to the hip",u:1},
 {n:"Shoulder halo",g:"upper",e:"db",c:"One weight, circle it slowly around the head"},
 /* full body */
 {n:"Squat to press",g:"cardio",e:"db",c:"Squat, then press overhead as you stand",b:"load"},
@@ -732,20 +755,20 @@ const WARMUP=[
 ];
 
 const COOLDOWN=[
-{n:"Hamstring stretch",c:"One leg long, hinge at the hip"},
-{n:"Quad stretch",c:"Heel to the backside, knees together"},
+{n:"Hamstring stretch",c:"One leg long, hinge at the hip",u:1},
+{n:"Quad stretch",c:"Heel to the backside, knees together",u:1},
 {n:"Child's pose",c:"Knees wide, arms long, breathe out"},
 {n:"Chest opener",c:"Hands behind the back, lift the chest"},
-{n:"Figure-four stretch",c:"Ankle on the opposite knee, sit back"},
+{n:"Figure-four stretch",c:"Ankle on the opposite knee, sit back",u:1},
 {n:"Cobra stretch",c:"On your front, press the chest up"},
-{n:"Shoulder stretch",c:"Arm across the body, pull it in"},
-{n:"Calf stretch",c:"Back heel down, lean into the wall"},
-{n:"Seated twist",c:"Sit tall, rotate and hold"},
+{n:"Shoulder stretch",c:"Arm across the body, pull it in",u:1},
+{n:"Calf stretch",c:"Back heel down, lean into the wall",u:1},
+{n:"Seated twist",c:"Sit tall, rotate and hold",u:1},
 {n:"Butterfly stretch",c:"Soles together, let the knees drop"},
 {n:"Downward dog",c:"Hips high, pedal out the heels"},
-{n:"Neck release",c:"Ear to the shoulder, no pulling"},
-{n:"Hip flexor lunge",c:"Back knee down, push the hip forward"},
-{n:"Lying spinal twist",c:"Knees over to one side, shoulders down"}
+{n:"Neck release",c:"Ear to the shoulder, no pulling",u:1},
+{n:"Hip flexor lunge",c:"Back knee down, push the hip forward",u:1},
+{n:"Lying spinal twist",c:"Knees over to one side, shoulders down",u:1}
 ];
 
 // ord: 1 standing, 2 kneeling and floor, 3 seated, 4 lying. s = do both sides.
@@ -902,11 +925,12 @@ function liveWeight(gid){
 /* Weighted pick across groups. Avoids the same group twice in a row, never
    repeats an exercise inside one circuit, and steers away from anything used
    in the last three sessions unless the group has nothing else left. */
-function pickSet(count){
+function pickSet(count,exclude){
   const p=pool();
   const recent=recentNames();
+  const taken=exclude||new Set();
   const live=GROUPS.filter(g=>liveWeight(g.id)>0&&p.some(x=>x.g===g.id));
-  const out=[],used=new Set();
+  const out=[],used=new Set(taken);
   if(!live.length) return out;
 
   const available=(gid)=>{
@@ -932,7 +956,7 @@ function pickSet(count){
       if(!avail.length) break;
       pick=rand(avail); last=pick.g;
     }
-    used.add(pick.n); out.push(pick);
+    used.add(pick.n); taken.add(pick.n); out.push(pick);
   }
   return bonePass(out,used);
 }
@@ -968,51 +992,101 @@ function sample(arr,n){
 }
 
 /* ===================== workout builders ===================== */
+/* Expand a pick into intervals. Anything marked one-sided runs twice, left
+   then right, back to back, so you never lose a side. */
+function sides(x){
+  return x.u ? [[x,"Left"],[x,"Right"]] : [[x,null]];
+}
+function intervalCost(set){ return set.reduce((a,x)=>a+(x.u?2:1),0); }
+
+/* Fill a cool-down to a budget of 30-second slots, counting a one-sided
+   stretch as the two slots it really takes. */
+function pickCooldown(slots){
+  const pool=sample(COOLDOWN,COOLDOWN.length), out=[];
+  let used=0;
+  for(const it of pool){
+    const cost=it.u?2:1;
+    if(used+cost>slots) continue;
+    out.push(it); used+=cost;
+    if(used>=slots) break;
+  }
+  return out;
+}
+
 function buildStrength(){
-  const target=S.minutes*60, iv=S.work+S.rest, C=S.perCircuit;
-  let warmN=clamp(Math.round(target*0.10/30),3,8);
-  let coolN=clamp(Math.round(target*0.10/30),3,8);
-  const breakExtra=20;
+  const target=S.minutes*60, C=S.perCircuit, breakExtra=20;
+  const MIN_WARM=4, MAX_WARM=12, MAX_COOL=20;               // 30-second slots
+  const MIN_COOL=clamp(Math.round(target*0.10/30),5,12);    // scales with the session
 
-  let block=target-(warmN+coolN)*30;
-  let rounds=Math.max(2,Math.round(block/(C*iv)));
-  let circuits=rounds>5?2:1;
-  let per=circuits===2?Math.max(2,Math.round(rounds/2)):rounds;
+  // Two or three rounds of one circuit, then a different circuit, rather than
+  // the same exercises for the whole session.
+  const sets=[], taken=new Set();
+  for(let c=0;c<4;c++){
+    const st=pickSet(C,taken);
+    if(st.length<Math.min(C,3)) break;        // pool exhausted, stop adding circuits
+    st.forEach(x=>taken.add(x.n));            // after the bone swap, not before
+    sets.push(st);
+  }
+  if(!sets.length) return null;
 
-  // trim or pad the cool-down so the total lands close to what was asked for
-  const workTime=()=>circuits*per*C*iv+(circuits*per-1)*breakExtra;
-  let coolAdj=Math.round((target-warmN*30-workTime())/30);
-  coolN=clamp(coolAdj,2,10);
+  const buildWork=(use,per)=>{
+    const out=[], totalRounds=use.length*per;
+    let roundNo=0;
+    use.forEach((set,c)=>{
+      const flat=[];
+      set.forEach(ex=>sides(ex).forEach(pair=>flat.push(pair)));
+      for(let r=0;r<per;r++){
+        roundNo++;
+        const lastRound=roundNo===totalRounds;
+        flat.forEach(([ex,side],k)=>{
+          const last=k===flat.length-1;
+          out.push({t:"work",n:side?ex.n+" \u00b7 "+side:ex.n,c:ex.c,d:S.work,
+                    g:ex.g,b:ex.b,round:roundNo,rounds:totalRounds,
+                    circuit:use.length>1?String.fromCharCode(65+c):null});
+          if(lastRound&&last) return;
+          out.push({t:last?"break":"rest",n:last?"Round break":"Rest",c:"",
+                    d:S.rest+(last?breakExtra:0),round:roundNo,rounds:totalRounds});
+        });
+      }
+    });
+    return out;
+  };
 
-  const warm=sample(WARMUP,warmN), cool=sample(COOLDOWN,coolN);
-  const sets=[];
-  for(let c=0;c<circuits;c++) sets.push(pickSet(C));
-  if(!sets[0].length) return null;
-
-  const segs=[];
-  warm.forEach(w=>segs.push({t:"warmup",n:w.n,c:w.c,d:30}));
-  let roundNo=0;
-  const totalRounds=circuits*per;
-  for(let c=0;c<circuits;c++){
-    for(let r=0;r<per;r++){
-      roundNo++;
-      const lastRound=roundNo===totalRounds;
-      sets[c].forEach((ex,i)=>{
-        const lastEx=i===sets[c].length-1;
-        segs.push({t:"work",n:ex.n,c:ex.c,d:S.work,g:ex.g,b:ex.b,round:roundNo,rounds:totalRounds,
-                   circuit:circuits>1?String.fromCharCode(65+c):null});
-        if(lastRound&&lastEx) return;
-        segs.push({t:lastEx?"break":"rest",n:lastEx?"Round break":"Rest",c:"",
-                   d:S.rest+(lastEx?breakExtra:0),round:roundNo,rounds:totalRounds});
-      });
+  /* A round is a fixed lump of six to ten minutes, so the shape that lands
+     closest to what you asked for is found by trying them, not by dividing.
+     One-sided exercises take two intervals, which is another reason the cost
+     of a circuit is only known once it is picked. */
+  const secs=a=>a.reduce((x,y)=>x+y.d,0);
+  let best=null;
+  for(let nc=1;nc<=sets.length;nc++){
+    for(let per=1;per<=3;per++){
+      const work=buildWork(sets.slice(0,nc),per);
+      const w=secs(work);
+      const spare=Math.max(0,target-w);
+      const warmN=clamp(Math.round(spare*0.42/30),MIN_WARM,MAX_WARM);
+      const coolN=clamp(Math.round((spare-warmN*30)/30),MIN_COOL,MAX_COOL);
+      const total=w+(warmN+coolN)*30;
+      // Closeness to the length you asked for, nudged towards variety: a single
+      // pass through a circuit is a last resort, and more circuits beat more
+      // repeats of the same one when the fit is otherwise similar.
+      const score=Math.abs(total-target) + (per===1?150:0) - (nc-1)*45;
+      if(!best||score<best.score) best={nc,per,work,warmN,coolN,score};
     }
   }
-  cool.forEach(c=>segs.push({t:"cooldown",n:c.n,c:c.c,d:30}));
 
-  return {segs,shape:circuits>1
-    ? "Two circuits of "+C+", "+per+" rounds each"
-    : "Circuit of "+C+", "+per+" rounds",
-    sets,warm,cool,circuits,per};
+  const segs=[];
+  const warm=sample(WARMUP,best.warmN);
+  warm.forEach(w=>segs.push({t:"warmup",n:w.n,c:w.c,d:30}));
+  best.work.forEach(x=>segs.push(x));
+  const cool=pickCooldown(best.coolN);
+  cool.forEach(x=>sides(x).forEach(([it,side])=>
+    segs.push({t:"cooldown",n:side?it.n+" \u00b7 "+side:it.n,c:it.c,d:30})));
+
+  const rounds=best.per===1?"1 round":best.per+" rounds";
+  const shape = best.nc>1
+    ? best.nc+" circuits of "+C+", "+rounds+" each"
+    : "Circuit of "+C+", "+rounds;
+  return {segs,shape,sets:sets.slice(0,best.nc),warm,cool,circuits:best.nc,per:best.per};
 }
 
 function buildFlex(){
@@ -1220,7 +1294,13 @@ function metFor(seg){
   if(seg.t==="warmup") return 3.5;
   if(seg.t==="rest"||seg.t==="break") return 2.0;
   if(seg.t==="cooldown"||seg.t==="hold") return 2.5;
-  if(seg.t==="work") return seg.g==="cardio" ? 8.5 : 6.0;
+  if(seg.t==="work"){
+    if(seg.b==="impact") return 9.0;          // jumping, hopping, heel drops
+    if(seg.g==="cardio") return 8.0;          // vigorous calisthenics
+    if(seg.b==="load")   return 6.0;          // loaded compound lifts
+    if(seg.g==="core"||seg.g==="abs") return 4.0;   // mostly held positions
+    return 5.0;                               // everything else, resistance work
+  }
   return 2.0;
 }
 function kcalFor(segs){
@@ -1407,7 +1487,8 @@ function doneSoFar(complete){
 }
 
 function recordSession(segs,secs){
-  const names=[...new Set(segs.filter(x=>x.t==="work"||x.t==="hold").map(x=>x.n))];
+  const names=[...new Set(segs.filter(x=>x.t==="work"||x.t==="hold")
+                             .map(x=>x.n.split(" \u00b7 ")[0]))];
   if(!names.length) return false;            // only a warm-up, not a session
   const groups={};
   let impact=false,load=false;
@@ -1452,7 +1533,7 @@ function endWorkout(complete){
   const bits=[];
   if(!complete) bits.push("Ended early and saved. It counts towards your week.");
   bits.push(kcal
-    ? "Calories are estimated from your weight and the clock, not measured. Treat it as a rough number."
+    ? "Calories come from your weight, which exercises came up and how long you spent on each. Published effort values, not a measurement, so treat it as a rough number."
     : "Add your weight on the home screen and the app will estimate calories.");
   $("d-note").textContent=bits.join(" ");
 
