@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="description" content="Interval workouts built to the length you ask for.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -36,16 +36,16 @@
   --quit:#E2685C;
   --r:14px;
 }
-*{box-sizing:border-box}
+/* touch-action does not inherit, so it has to be set on everything: a double
+   tap that lands between the buttons would otherwise still zoom. Pinch to zoom
+   is untouched, only the accidental double-tap. */
+*{box-sizing:border-box;touch-action:manipulation}
 html{overscroll-behavior:none}
-/* A near miss on Back or Skip used to double-tap-zoom, select text, or drag
-   the page. None of those are wanted mid-workout. */
 .play,.done{
-  touch-action:manipulation;
   -webkit-user-select:none;user-select:none;
   overscroll-behavior:none;
 }
-button,a,.pip{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button,a,.pip{-webkit-tap-highlight-color:transparent}
 body{
   margin:0;
   background:var(--ink);
@@ -300,7 +300,7 @@ select.fld{appearance:none;-webkit-appearance:none}
 }
 </style>
 <style>
-  html,body{background:#0C1016}
+  html,body{background:#0C1016;touch-action:manipulation}
   .app{padding-top:env(safe-area-inset-top)}
   html.standalone .app{padding-top:max(env(safe-area-inset-top),52px)}
   @media all and (display-mode:standalone){
@@ -312,6 +312,20 @@ select.fld{appearance:none;-webkit-appearance:none}
      (window.matchMedia&&matchMedia("(display-mode: standalone)").matches)){
     document.documentElement.classList.add("standalone");
   }
+  // Backstop for the double tap: swallow the second tap only when it lands in
+  // the same spot as the first, so quick repeat taps on Skip still register.
+  (function(){
+    var t=0,x=0,y=0;
+    document.addEventListener("touchend",function(e){
+      var p=e.changedTouches&&e.changedTouches[0]; if(!p) return;
+      var now=Date.now();
+      if(now-t<330 && Math.abs(p.clientX-x)<28 && Math.abs(p.clientY-y)<28){
+        e.preventDefault();
+        if(e.target&&typeof e.target.click==="function") e.target.click();
+      }
+      t=now; x=p.clientX; y=p.clientY;
+    },{passive:false});
+  })();
 </script>
 </head>
 <body>
