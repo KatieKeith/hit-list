@@ -302,8 +302,6 @@ select.fld{appearance:none;-webkit-appearance:none}
 <style>
   html,body{background:#0C1016}
   .app{padding-top:env(safe-area-inset-top)}
-  /* Installed on the Home Screen the page runs under the clock and battery.
-     env() alone is not dependable there, so a real floor is enforced. */
   html.standalone .app{padding-top:max(env(safe-area-inset-top),52px)}
   @media all and (display-mode:standalone){
     .app{padding-top:max(env(safe-area-inset-top),52px)}
@@ -1183,11 +1181,11 @@ function renderPreview(){
       sect(W.circuits>1?("Circuit "+String.fromCharCode(65+ci)+" · "+W.per+" rounds"):("The circuit · "+W.per+" rounds"),"m");
       set.forEach((ex,i)=>{
         const g=GROUPS.find(g=>g.id===ex.g);
-        item(i+1,ex.n,g?g.name:"");
+        item(i+1,ex.n,(ex.u?"2 sides · ":"")+(g?g.name:""));
       });
     });
     sect("Cool-down","c");
-    W.cool.forEach((c,i)=>item(i+1,c.n,"30s"));
+    W.cool.forEach((c,i)=>item(i+1,c.n,c.u?"30s each side":"30s"));
   }
 }
 
