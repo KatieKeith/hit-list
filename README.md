@@ -1,8 +1,13 @@
 # Hit List
 
-Interval workouts built to the length you ask for. A single HTML page: no
-accounts, no server, no tracking. Everything runs in your browser and your
-settings and history are stored only on your own device.
+Interval workouts built to the length you ask for. A single HTML page with no
+accounts and no back end. Everything runs in your browser, and your settings and
+workout history are stored only on your own device.
+
+The one exception: the page counts anonymous visits with
+[GoatCounter](https://www.goatcounter.com), which sets no cookies and collects
+no personal data. It records that a workout was started or finished, and nothing
+about what was in it.
 
 **Open it:** https://katiekeith.github.io/hit-list/
 

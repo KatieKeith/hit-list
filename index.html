@@ -326,7 +326,19 @@ select.fld{appearance:none;-webkit-appearance:none}
       t=now; x=p.clientX; y=p.clientY;
     },{passive:false});
   })();
+  // Visiting with ?skipgc stops this browser being counted. ?skipgc=0 undoes it.
+  (function(){
+    try{
+      var q=location.search;
+      if(q.indexOf("skipgc")>-1){
+        if(/skipgc=0/.test(q)) localStorage.removeItem("skipgc");
+        else localStorage.setItem("skipgc","t");
+      }
+    }catch(e){}
+  })();
 </script>
+<script data-goatcounter="https://barn2.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 <div class="app">
@@ -1297,6 +1309,16 @@ function initSetup(){
 }
 
 
+/* ===================== counting =====================
+   A no-op unless the page loaded GoatCounter. Counts that a workout happened
+   and nothing about it: no exercises, no durations, no settings. */
+function track(path){
+  try{
+    if(window.goatcounter&&window.goatcounter.count)
+      window.goatcounter.count({path:path,title:path,event:true});
+  }catch(e){}
+}
+
 /* ===================== calories =====================
    MET values from the Compendium of Physical Activities: vigorous calisthenics
    and circuit work sit around 8, resistance work around 6, stretching around
@@ -1409,6 +1431,7 @@ let P={segs:[],i:0,endAt:0,left:0,paused:true,raf:null,total:0,elapsedBefore:0,l
 function startWorkout(){
   if(!W||!W.segs.length) return;
   audio();
+  track("workout-start/"+S.mode);
   P.segs=W.segs; P.i=0; P.paused=false; P.done=0;
   P.total=P.segs.reduce((s,x)=>s+x.d,0);
   P.elapsedBefore=0;
@@ -1530,6 +1553,7 @@ function endWorkout(complete){
     try{ window.scrollTo(0,0); }catch(e){}
     return;
   }
+  track((complete?"workout-finish/":"workout-ended-early/")+S.mode);
   if(complete){
     beep(660,180); setTimeout(()=>beep(880,180),200); setTimeout(()=>beep(1180,320),400);
     say("Workout complete");
