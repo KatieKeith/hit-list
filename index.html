@@ -1115,8 +1115,10 @@ function buildStrength(){
 
 function buildFlex(){
   const target=S.minutes*60, trans=10, iv=S.hold+trans;
-  const openers=sample(WARMUP.filter(w=>/Cat-cow|Arm circles|Hip circles|Shoulder rolls|Torso twist|Ankle rolls/.test(w.n)),3);
-  let slots=Math.max(4,Math.round((target-openers.length*30)/iv));
+  // The session is mobility from start to finish, so no warm-up or cool-down.
+  // It opens with the gentler standing stretches and closes in corpse pose.
+  const rest=target<=15*60?60:target<=30*60?90:120;
+  let slots=Math.max(4,Math.round((target-rest)/iv));
 
   // spread across standing, floor, seated, lying in that order
   const want={1:0.28,2:0.34,3:0.18,4:0.20};
@@ -1128,7 +1130,6 @@ function buildFlex(){
   }
 
   const segs=[];
-  openers.forEach(o=>segs.push({t:"warmup",n:o.n,c:o.c,d:30}));
   let count=0;
   for(const s of chosen){
     const sides=s.s?["Left","Right"]:[null];
@@ -1141,9 +1142,9 @@ function buildFlex(){
     if(count>=slots) break;
   }
   if(segs.length&&segs[segs.length-1].t==="rest") segs.pop();
-  segs.push({t:"cooldown",n:"Lie still",c:"Let everything go, slow breaths"  ,d:60});
+  segs.push({t:"cooldown",n:"Corpse pose",c:"Lie flat, palms up, let everything go",d:rest});
 
-  return {segs,shape:"Full body, "+count+" stretches held for "+S.hold+"s",chosen,openers};
+  return {segs,shape:"Full body, "+count+" stretches held for "+S.hold+"s",chosen,rest};
 }
 
 let W=null;
@@ -1195,11 +1196,12 @@ function renderPreview(){
   };
 
   if(S.mode==="flex"){
-    sect("Opening mobility","w");
-    W.openers.forEach((o,i)=>item(i+1,o.n,"30s"));
+
     sect("Stretches","m");
     let n=0;
     W.segs.filter(s=>s.t==="hold").forEach(s=>item(++n,s.n,S.hold+"s"));
+    sect("To finish","c");
+    item(1,"Corpse pose",W.rest+"s");
   }else{
     sect("Warm-up","w");
     W.warm.forEach((w,i)=>item(i+1,w.n,"30s"));
@@ -1453,7 +1455,7 @@ function enter(i){
 
   const pl=$("player");
   pl.style.setProperty("--accent",ACCENT[s.t]||"var(--work)");
-  $("chip").textContent=CHIP[s.t]||"";
+  $("chip").textContent=(S.mode==="flex"&&s.t==="cooldown")?"Relax":(CHIP[s.t]||"");
   $("rnd").textContent = s.round ? ((s.circuit?"Circuit "+s.circuit+" · ":"")+"Round "+s.round+" of "+s.rounds) : "";
   $("now").textContent=s.n;
   $("cue").textContent=s.c||"";
