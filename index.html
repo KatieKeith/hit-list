@@ -79,12 +79,16 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--work);outl
 }
 .mast h1 span{color:var(--work)}
 .mast p{margin:6px 0 0;color:var(--muted);font-size:15px}
+.build{color:var(--dim);font-size:13px;white-space:nowrap}
 
 .block{margin-bottom:22px}
 .lab{
   display:block;font-size:11px;font-weight:600;text-transform:uppercase;
   letter-spacing:.13em;color:var(--dim);margin-bottom:9px;
 }
+.lab-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.lab-row .shuffle{text-transform:none;letter-spacing:0}
+.wrow b.stale{color:var(--muted);font-family:"Barlow",sans-serif;font-size:15px;font-weight:600}
 
 /* segmented */
 .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px;gap:4px}
@@ -225,7 +229,9 @@ select.fld{appearance:none;-webkit-appearance:none}
   font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;
   color:var(--accent);
 }
-.rnd{font-size:14px;color:var(--dim);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.rnd{display:flex;flex-direction:column;align-items:center;line-height:1.18;
+     font-size:14px;color:var(--dim);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.rnd #rnd-sub{font-size:11px;letter-spacing:.09em;color:var(--line2)}
 .xbtn{font-size:14px;color:var(--dim);font-weight:600;padding:4px 0 4px 10px}
 
 .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:12px 18px}
@@ -348,7 +354,7 @@ select.fld{appearance:none;-webkit-appearance:none}
   <div class="wrap">
     <header class="mast">
       <h1>Hit<span>.</span>List</h1>
-      <p>Interval workouts built to the length you ask for.</p>
+      <p>Interval workouts built to the length you ask for. <span class="build">Build 17</span></p>
     </header>
 
     <div class="block">
@@ -427,8 +433,9 @@ select.fld{appearance:none;-webkit-appearance:none}
     </div>
 
     <div class="block">
-      <span class="lab">This week</span>
+      <span class="lab lab-row">This week<button class="shuffle" id="w-clear">Clear history</button></span>
       <div class="week">
+        <div class="wrow"><span>Last session</span><b id="w-last">None yet</b></div>
         <div class="wrow"><span>Strength sessions</span><b id="w-days">0 of 2</b></div>
         <div class="wrow"><span>Bone loading sessions</span><b id="w-bone">0 of 2</b></div>
         <div class="chips" id="w-chips"></div>
@@ -525,7 +532,7 @@ select.fld{appearance:none;-webkit-appearance:none}
   <div class="pips" id="pips"></div>
   <div class="phead">
     <span class="chip" id="chip">Warm-up</span>
-    <span class="rnd" id="rnd"></span>
+    <span class="rnd" id="rnd"><span id="rnd-main"></span><span id="rnd-sub"></span></span>
     <button class="xbtn" id="quit">End</button>
   </div>
 
@@ -841,7 +848,6 @@ const STRETCH=[
 {n:"Pyramid pose",ord:1,s:true,c:"Legs staggered and straight, fold over the front leg"},
 {n:"Triangle pose",ord:1,s:true,c:"Legs wide, hand to the shin, open the chest up"},
 {n:"Wide-legged forward fold",ord:1,s:false,c:"Feet wide, hinge from the hips, head hangs"},
-{n:"Half splits",ord:2,s:true,c:"Front leg straight, hips back over the back knee"},
 {n:"Camel pose",ord:2,s:false,c:"Kneel tall, hands to the heels, lift the chest"},
 {n:"Sleeping pigeon",ord:2,s:true,c:"Fold forward over the front shin"},
 {n:"Bridge pose hold",ord:4,s:false,c:"Feet hip-width, lift the hips and hold"}
@@ -849,7 +855,9 @@ const STRETCH=[
 
 /* ===================== settings ===================== */
 const DEFAULTS={
-  mode:"strength", minutes:30, work:40, rest:20, perCircuit:6, hold:45,
+  // minutes is whichever tab you are on; minsBy is what each tab remembers.
+  mode:"strength", minutes:30, minsBy:{strength:30,flex:30},
+  work:40, rest:20, perCircuit:6, hold:45,
   db:true, band:true, beeps:true, voice:true,
   // Katie walks a lot, so legs get less and the neglected groups get more.
   pri:{legs:1,glutes:2,core:3,abs:3,upper:3,cardio:2},
@@ -863,9 +871,30 @@ let S=load();
 function load(){
   try{
     const raw=localStorage.getItem("hitlist");
-    if(raw){const o=JSON.parse(raw);return{...DEFAULTS,...o,pri:{...DEFAULTS.pri,...(o.pri||{})},custom:Array.isArray(o.custom)?o.custom:[],log:Array.isArray(o.log)?o.log:[]};}
+    if(raw){
+      const o=JSON.parse(raw);
+      const out={...DEFAULTS,...o,
+        pri:{...DEFAULTS.pri,...(o.pri||{})},
+        custom:Array.isArray(o.custom)?o.custom:[],
+        log:Array.isArray(o.log)?o.log:[]};
+      // Before the two tabs kept their own length, there was one number. Seed
+      // both from it so nothing jumps on the first load after this change.
+      out.minsBy={strength:DEFAULTS.minsBy.strength,flex:DEFAULTS.minsBy.flex,...(o.minsBy||{})};
+      if(!o.minsBy && typeof o.minutes==="number"){
+        out.minsBy.strength=o.minutes; out.minsBy.flex=o.minutes;
+      }
+      out.minutes=out.minsBy[out.mode]||out.minutes;
+      // Only the main tab is hard enough to need recovery. Older versions could
+      // record muscle work against a flexibility session, which left groups
+      // sitting in the rest window for no reason. Clear it out.
+      out.log=out.log.map(e=>e&&e.mode==="strength"?e:{...e,groups:{},impact:false,load:false});
+      // A session stamped in the future never leaves the 48-hour window, so it
+      // pins every muscle group to "resting" no matter how long ago you trained.
+      out.log=out.log.filter(e=>e&&typeof e.t==="number"&&e.t<=Date.now());
+      return out;
+    }
   }catch(e){}
-  return {...DEFAULTS,pri:{...DEFAULTS.pri},custom:[],log:[]};
+  return {...DEFAULTS,minsBy:{...DEFAULTS.minsBy},pri:{...DEFAULTS.pri},custom:[],log:[]};
 }
 function save(){ try{ localStorage.setItem("hitlist",JSON.stringify(S)); }catch(e){} }
 
@@ -894,7 +923,7 @@ function since(pred){
 }
 /* Hours since this muscle group last did real work, or null if never. */
 function groupRested(gid){
-  return since(e=>e.groups&&e.groups[gid]>0);
+  return since(e=>e.mode==="strength"&&e.groups&&e.groups[gid]>0);
 }
 function thisWeek(){
   const cut=Date.now()-7*DAY;
@@ -1066,10 +1095,13 @@ function buildStrength(){
           const last=k===flat.length-1;
           out.push({t:"work",n:side?ex.n+" \u00b7 "+side:ex.n,c:ex.c,d:S.work,
                     g:ex.g,b:ex.b,round:roundNo,rounds:totalRounds,
+                    rIn:r+1,rPer:per,
                     circuit:use.length>1?String.fromCharCode(65+c):null});
           if(lastRound&&last) return;
           out.push({t:last?"break":"rest",n:last?"Round break":"Rest",c:"",
-                    d:S.rest+(last?breakExtra:0),round:roundNo,rounds:totalRounds});
+                    d:S.rest+(last?breakExtra:0),round:roundNo,rounds:totalRounds,
+                    rIn:r+1,rPer:per,
+                    circuit:use.length>1?String.fromCharCode(65+c):null});
         });
       }
     });
@@ -1114,7 +1146,7 @@ function buildStrength(){
 }
 
 function buildFlex(){
-  const target=S.minutes*60, trans=10, iv=S.hold+trans;
+  const target=S.minutes*60, trans=5, iv=S.hold+trans;
   // The session is mobility from start to finish, so no warm-up or cool-down.
   // It opens with the gentler standing stretches and closes in corpse pose.
   const rest=target<=15*60?60:target<=30*60?90:120;
@@ -1217,6 +1249,19 @@ function renderPreview(){
   }
 }
 
+/* Plain English for how long ago, so the recovery note can never look like it
+   is arguing with you. */
+function ago(t){
+  const h=(Date.now()-t)/HOUR;
+  if(h<1) return "just now";
+  if(h<2) return "an hour ago";
+  if(h<24) return Math.round(h)+" hours ago";
+  const d=Math.floor(h/24);
+  if(d===1) return "yesterday";
+  if(d<7) return d+" days ago";
+  return "over a week ago";
+}
+
 function joinList(a){
   if(a.length===0) return "";
   if(a.length===1) return a[0];
@@ -1225,6 +1270,11 @@ function joinList(a){
 
 function renderWeek(){
   const w=weekStats();
+  const last=S.log[0], lastEl=$("w-last");
+  lastEl.textContent = last
+    ? (last.mode==="flex"?"Flexibility":"Strength")+", "+ago(last.t)
+    : "None yet";
+  lastEl.classList.add("stale");
   const days=$("w-days"), bone=$("w-bone");
   days.textContent=w.days+" of 2";
   bone.textContent=w.bone+" of 2";
@@ -1256,7 +1306,13 @@ function renderWeek(){
 function refresh(){ build(); renderPreview(); renderWeek(); }
 
 function setMode(m){
-  S.mode=m; save();
+  S.mode=m;
+  // Each tab keeps its own length, so switching restores what you last used
+  // there rather than carrying the other tab's number across.
+  if(typeof S.minsBy[m]==="number") S.minutes=S.minsBy[m];
+  else S.minsBy[m]=S.minutes;
+  $("v-minutes").textContent=S.minutes;
+  save();
   [...$("mode").children].forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m)));
   $("mode").classList.toggle("flexmode",m==="flex");
   document.body.classList.toggle("flexmode-on",m==="flex");
@@ -1271,6 +1327,7 @@ function wireSteppers(){
     el.querySelectorAll("button").forEach(b=>{
       b.addEventListener("click",()=>{
         S[key]=clamp(S[key]+Number(b.dataset.d)*inc,lo,hi);
+        if(key==="minutes") S.minsBy[S.mode]=S.minutes;
         $("v-"+key).textContent=S[key]; save(); refresh();
       });
     });
@@ -1305,6 +1362,12 @@ function initSetup(){
   wireSeg("hold","hold",Number);
   [...$("mode").children].forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
   $("shuffle").addEventListener("click",refresh);
+  $("w-clear").addEventListener("click",()=>{
+    S.log=[]; save(); refresh();
+    const b=$("w-clear");
+    b.textContent="Cleared";
+    setTimeout(()=>{ b.textContent="Clear history"; },2000);
+  });
   initMine();
   renderWeek();
   setMode(S.mode);
@@ -1456,7 +1519,17 @@ function enter(i){
   const pl=$("player");
   pl.style.setProperty("--accent",ACCENT[s.t]||"var(--work)");
   $("chip").textContent=(S.mode==="flex"&&s.t==="cooldown")?"Relax":(CHIP[s.t]||"");
-  $("rnd").textContent = s.round ? ((s.circuit?"Circuit "+s.circuit+" · ":"")+"Round "+s.round+" of "+s.rounds) : "";
+  /* Two lines: where you are inside this circuit, and where that sits in the
+     whole session. One circuit means the two are the same, so the second line
+     is dropped. */
+  const rMain=$("rnd-main"), rSub=$("rnd-sub");
+  if(s.round){
+    const per=s.rPer||s.rounds, inR=s.rIn||s.round;
+    rMain.textContent=(s.circuit?"Circuit "+s.circuit+" · ":"")+"Round "+inR+" of "+per;
+    rSub.textContent=(s.rounds>per)?(s.round+" of "+s.rounds+" overall"):"";
+  }else{
+    rMain.textContent=""; rSub.textContent="";
+  }
   $("now").textContent=s.n;
   $("cue").textContent=s.c||"";
   const nxt=P.segs.slice(i+1).find(x=>x.t==="work"||x.t==="hold"||x.t==="warmup"||x.t==="cooldown");
@@ -1524,12 +1597,17 @@ function doneSoFar(complete){
 }
 
 function recordSession(segs,secs){
-  const names=[...new Set(segs.filter(x=>x.t==="work"||x.t==="hold")
-                             .map(x=>x.n.split(" \u00b7 ")[0]))];
-  if(!names.length) return false;            // only a warm-up, not a session
+  const done=segs.filter(x=>x.t==="work"||x.t==="hold");
+  const names=[...new Set(done.map(x=>x.n.split(" \u00b7 ")[0]))];
+  // Opening the player, skipping through a few intervals and backing out used to
+  // log a full session, which then held those muscle groups in recovery for two
+  // days. It only counts once you have actually done some of it.
+  if(done.length<4 || secs<4*60) return false;
   const groups={};
   let impact=false,load=false;
-  if(W&&W.sets){
+  // Stretching is not training. A flexibility session is logged for the week,
+  // but it never puts a muscle group into the recovery window.
+  if(S.mode==="strength" && W && W.sets){
     W.sets.forEach(set=>set.forEach(x=>{
       if(!names.includes(x.n)) return;
       groups[x.g]=(groups[x.g]||0)+1;
